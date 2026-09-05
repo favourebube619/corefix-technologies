@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        CoreFix Admin Login
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+</head>
+
+
+<body class="admin-login-body">
+
+
+    <div class="admin-login-card">
+
+        <div class="admin-login-logo">
+            ⚡
+        </div>
+
+
+        <h1>
+            CoreFix Admin
+        </h1>
+
+
+        <p>
+            Sign in to manage repair requests.
+        </p>
+
+
+        {% if error %}
+
+        <div class="login-error">
+            {{ error }}
+        </div>
+
+        {% endif %}
+
+
+        <form method="POST">
+
+
+            <div class="login-form-group">
+
+                <label>
+                    Username
+                </label>
+
+                <input
+                    type="text"
+                    name="username"
+                    placeholder="Enter username"
+                    required
+                >
+
+            </div>
+
+
+            <div class="login-form-group">
+
+                <label>
+                    Password
+                </label>
+
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="Enter password"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="admin-login-btn"
+            >
+                Sign In
+            </button>
+
+
+        </form>
+
+
+        <a
+            href="/"
+            class="login-back"
+        >
+            ← Back to website
+        </a>
+
+
+    </div>
+
+
+</body>
+
+</html>

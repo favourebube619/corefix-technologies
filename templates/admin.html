@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        CoreFix Admin Dashboard
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+</head>
+
+
+<body class="admin-body">
+
+
+<!-- =====================================================
+     ADMIN NAVIGATION
+===================================================== -->
+
+<header class="admin-navbar">
+
+    <div class="admin-logo">
+
+        <span class="logo-icon">
+            ⚡
+        </span>
+
+        <div>
+
+            <strong>
+                CoreFix
+            </strong>
+
+            <span>
+                Admin
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="admin-nav-actions">
+
+        <a
+            href="/"
+            class="admin-view-site"
+        >
+            ← View Website
+        </a>
+
+        <a
+            href="/admin/logout"
+            class="admin-logout-btn"
+        >
+            Logout
+        </a>
+
+    </div>
+
+</header>
+
+
+
+<!-- =====================================================
+     ADMIN MAIN
+===================================================== -->
+
+<main class="admin-main">
+
+
+    <!-- =================================================
+         PAGE HEADER
+    ================================================== -->
+
+    <section class="admin-heading">
+
+        <div>
+
+            <p class="admin-label">
+                ADMIN DASHBOARD
+            </p>
+
+            <h1>
+
+                CoreFix
+
+                <span>
+                    Management
+                </span>
+
+            </h1>
+
+            <p class="admin-description">
+
+                View repair requests,
+                manage customer orders,
+                update device statuses
+                and manage accessories.
+
+            </p>
+
+        </div>
+
+
+        <button
+            type="button"
+            id="clearRepairsBtn"
+            class="clear-repairs-btn"
+        >
+            Clear Test Data
+        </button>
+
+    </section>
+
+
+
+    <!-- =================================================
+         REPAIR STATISTICS
+    ================================================== -->
+
+    <section class="admin-stats">
+
+
+        <div class="admin-stat-card">
+
+            <div class="stat-icon">
+                🛠️
+            </div>
+
+            <div>
+
+                <span>
+                    Total Requests
+                </span>
+
+                <strong id="totalRepairs">
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="admin-stat-card">
+
+            <div class="stat-icon">
+                📥
+            </div>
+
+            <div>
+
+                <span>
+                    Received
+                </span>
+
+                <strong id="receivedCount">
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="admin-stat-card">
+
+            <div class="stat-icon">
+                ⚙️
+            </div>
+
+            <div>
+
+                <span>
+                    In Progress
+                </span>
+
+                <strong id="progressCount">
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="admin-stat-card">
+
+            <div class="stat-icon">
+                ✅
+            </div>
+
+            <div>
+
+                <span>
+                    Ready
+                </span>
+
+                <strong id="readyCount">
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =================================================
+         ORDER STATISTICS
+    ================================================== -->
+
+    <section class="admin-stats">
+
+
+        <div class="admin-stat-card">
+
+            <div class="stat-icon">
+                📦
+            </div>
+
+            <div>
+
+                <span>
+                    Total Orders
+                </span>
+
+                <strong id="totalOrders">
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="admin-stat-card">
+
+            <div class="stat-icon">
+                ⏳
+            </div>
+
+            <div>
+
+                <span>
+                    Pending Orders
+                </span>
+
+                <strong id="pendingOrders">
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="admin-stat-card">
+
+            <div class="stat-icon">
+                ✅
+            </div>
+
+            <div>
+
+                <span>
+                    Completed Orders
+                </span>
+
+                <strong id="completedOrders">
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="admin-stat-card">
+
+            <div class="stat-icon">
+                💰
+            </div>
+
+            <div>
+
+                <span>
+                    Order Revenue
+                </span>
+
+                <strong id="orderRevenue">
+                    ₦0
+                </strong>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =================================================
+         REPAIR REQUESTS
+    ================================================== -->
+
+    <section class="admin-repairs">
+
+        <div class="admin-section-header">
+
+            <div>
+
+                <p class="admin-label">
+                    CUSTOMER REQUESTS
+                </p>
+
+                <h2>
+                    Repair Requests
+                </h2>
+
+            </div>
+
+
+            <div class="admin-search-box">
+
+                <span>
+                    🔎
+                </span>
+
+                <input
+                    type="text"
+                    id="adminSearch"
+                    placeholder="Search repair ID, name, phone, device..."
+                    autocomplete="off"
+                >
+
+            </div>
+
+        </div>
+
+
+        <div class="admin-table-wrapper">
+
+            <table class="admin-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Repair ID
+                        </th>
+
+                        <th>
+                            Customer
+                        </th>
+
+                        <th>
+                            Device
+                        </th>
+
+                        <th>
+                            Issue
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th>
+                            Action
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="repairTableBody">
+                </tbody>
+
+            </table>
+
+
+            <div
+                class="empty-admin"
+                id="emptyAdmin"
+            >
+
+                <div class="empty-admin-icon">
+                    🧰
+                </div>
+
+                <h3>
+                    No Repair Requests
+                </h3>
+
+                <p>
+                    New repair requests will
+                    appear here automatically.
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         PRODUCT MANAGEMENT
+    ===================================================== -->
+
+    <section class="admin-products">
+
+        <div class="admin-section-header">
+
+            <div>
+
+                <p class="admin-label">
+                    ACCESSORIES
+                </p>
+
+                <h2>
+                    Product Management
+                </h2>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- =================================================
+             PRODUCT FORM
+        ================================================== -->
+
+        <form
+            id="productForm"
+            class="product-admin-form"
+        >
+
+
+            <!-- PRODUCT NAME -->
+
+            <div class="product-form-group">
+
+                <label for="productName">
+                    Product Name
+                </label>
+
+                <input
+                    type="text"
+                    id="productName"
+                    placeholder="e.g. Samsung Fast Charger"
+                    required
+                >
+
+            </div>
+
+
+
+            <!-- PRODUCT PRICE -->
+
+            <div class="product-form-group">
+
+                <label for="productPrice">
+                    Product Price
+                </label>
+
+                <input
+                    type="number"
+                    id="productPrice"
+                    placeholder="e.g. 8500"
+                    min="0"
+                    step="1"
+                    required
+                >
+
+            </div>
+
+
+
+            <!-- PRODUCT ICON -->
+
+            <div class="product-form-group">
+
+                <label for="productIcon">
+                    Icon
+                </label>
+
+                <input
+                    type="text"
+                    id="productIcon"
+                    placeholder="e.g. 🔌"
+                    value="📦"
+                    required
+                >
+
+            </div>
+
+
+
+            <!-- PRODUCT IMAGE -->
+
+            <div class="product-form-group">
+
+                <label for="productImageFile">
+                    Product Image
+                </label>
+
+
+                <input
+                    type="file"
+                    id="productImageFile"
+                    accept=".jpg,.jpeg,.png,.webp"
+                >
+
+
+                <!--
+                    Stores the existing image filename
+                    when a product is being edited.
+                -->
+
+                <input
+                    type="hidden"
+                    id="productImage"
+                >
+
+
+                <!-- IMAGE PREVIEW -->
+
+                <div
+    id="productImagePreviewWrapper"
+    class="product-image-preview-wrapper"
+>
+
+    <img
+        id="productImagePreview"
+        class="product-image-preview"
+        alt="Product preview"
+    >
+
+</div>
+
+            </div>
+
+
+
+            <!-- STOCK STATUS -->
+
+            <div class="product-form-group">
+
+                <label for="productStock">
+                    Stock Status
+                </label>
+
+                <select
+                    id="productStock"
+                    required
+                >
+
+                    <option value="In Stock">
+                        In Stock
+                    </option>
+
+                    <option value="Low Stock">
+                        Low Stock
+                    </option>
+
+                    <option value="Out of Stock">
+                        Out of Stock
+                    </option>
+
+                </select>
+
+            </div>
+
+
+
+            <!-- DESCRIPTION -->
+
+            <div
+                class="
+                    product-form-group
+                    product-description-group
+                "
+            >
+
+                <label for="productDescription">
+                    Description
+                </label>
+
+                <textarea
+                    id="productDescription"
+                    rows="3"
+                    placeholder="Short product description..."
+                    required
+                ></textarea>
+
+            </div>
+
+
+
+            <!-- SUBMIT -->
+
+            <button
+                type="submit"
+                class="product-add-btn"
+            >
+                + Add Product
+            </button>
+
+        </form>
+
+
+
+        <!-- =================================================
+             PRODUCT LIST
+        ================================================== -->
+
+        <div class="admin-product-table-wrapper">
+
+            <table class="admin-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Product
+                        </th>
+
+                        <th>
+                            Image
+                        </th>
+
+                        <th>
+                            Price
+                        </th>
+
+                        <th>
+                            Stock
+                        </th>
+
+                        <th>
+                            Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="productTableBody">
+                </tbody>
+
+            </table>
+
+
+            <div
+                class="empty-admin"
+                id="emptyProducts"
+            >
+
+                <div class="empty-admin-icon">
+                    📦
+                </div>
+
+                <h3>
+                    No Accessories
+                </h3>
+
+                <p>
+                    Products you add will appear here.
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         ORDER MANAGEMENT
+    ===================================================== -->
+
+    <!-- =====================================================
+     ORDER MANAGEMENT
+===================================================== -->
+
+<section class="admin-orders">
+
+    <div class="admin-section-header">
+
+        <div>
+
+            <p class="admin-label">
+                CUSTOMER ORDERS
+            </p>
+
+            <h2>
+                Order Management
+            </h2>
+
+        </div>
+
+
+        <div class="admin-order-controls">
+
+            <div class="admin-search-box">
+
+                <span>
+                    🔎
+                </span>
+
+                <input
+                    type="text"
+                    id="orderSearch"
+                    placeholder="Search order ID, customer, phone, product..."
+                    autocomplete="off"
+                >
+
+            </div>
+
+
+            <select
+                id="orderStatusFilter"
+                class="order-status-filter"
+                aria-label="Filter orders by status"
+            >
+
+                <option value="">
+                    All Statuses
+                </option>
+
+                <option value="Pending">
+                    Pending
+                </option>
+
+                <option value="Confirmed">
+                    Confirmed
+                </option>
+
+                <option value="Ready">
+                    Ready
+                </option>
+
+                <option value="Completed">
+                    Completed
+                </option>
+
+                <option value="Cancelled">
+                    Cancelled
+                </option>
+
+            </select>
+
+
+            <select
+                id="orderSort"
+                class="order-status-filter"
+                aria-label="Sort customer orders"
+            >
+
+                <option value="newest">
+                    Newest First
+                </option>
+
+                <option value="oldest">
+                    Oldest First
+                </option>
+
+                <option value="highest">
+                    Highest Total
+                </option>
+
+                <option value="lowest">
+                    Lowest Total
+                </option>
+
+            </select>
+
+        </div>
+
+    </div>
+
+
+    <div class="admin-order-table-wrapper">
+
+        <table class="admin-table">
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Order ID
+                    </th>
+
+                    <th>
+                        Customer
+                    </th>
+
+                    <th>
+                        Product
+                    </th>
+
+                    <th>
+                        Quantity
+                    </th>
+
+                    <th>
+                        Total
+                    </th>
+
+                    <th>
+                        Status
+                    </th>
+
+                    <th>
+                        Actions
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="orderTableBody">
+            </tbody>
+
+        </table>
+
+
+        <div
+            class="empty-admin"
+            id="emptyOrders"
+        >
+
+            <div class="empty-admin-icon">
+                📦
+            </div>
+
+            <h3>
+                No Orders Yet
+            </h3>
+
+            <p>
+                Customer accessory orders
+                will appear here.
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+</main>
+
+
+
+<!-- =====================================================
+     FOOTER
+===================================================== -->
+
+<footer class="admin-footer">
+
+    <p>
+        CoreFix Technologies • Admin Dashboard • 2026
+    </p>
+
+</footer>
+
+
+
+<!-- =====================================================
+     ADMIN JAVASCRIPT
+===================================================== -->
+
+<script
+    src="{{ url_for('static', filename='js/admin.js') }}"
+></script>
+
+
+</body>
+
+</html>
