@@ -1,13 +1,29 @@
+import os
 import sqlite3
+
 from pathlib import Path
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 
 # ==========================================
-# DATABASE LOCATION
+# DATABASE CONFIGURATION
 # ==========================================
 
 BASE_DIR = Path(__file__).resolve().parent
-DATABASE = BASE_DIR / "corefix.db"
+
+SQLITE_DATABASE = BASE_DIR / "corefix.db"
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    ""
+).strip()
+
+
+USE_POSTGRES = bool(
+    DATABASE_URL
+)
 
 
 # ==========================================
@@ -16,8 +32,18 @@ DATABASE = BASE_DIR / "corefix.db"
 
 def get_connection():
 
+    if USE_POSTGRES:
+
+        connection = psycopg2.connect(
+            DATABASE_URL,
+            cursor_factory=RealDictCursor
+        )
+
+        return connection
+
+
     connection = sqlite3.connect(
-        DATABASE
+        SQLITE_DATABASE
     )
 
     connection.row_factory = sqlite3.Row
@@ -26,7 +52,40 @@ def get_connection():
 
 
 # ==========================================
-# CREATE DATABASE
+# EXECUTE HELPER
+# ==========================================
+
+def execute_query(
+    connection,
+    query,
+    parameters=()
+):
+
+    if USE_POSTGRES:
+
+        query = query.replace(
+            "?",
+            "%s"
+        )
+
+        cursor = connection.cursor()
+
+        cursor.execute(
+            query,
+            parameters
+        )
+
+        return cursor
+
+
+    return connection.execute(
+        query,
+        parameters
+    )
+
+
+# ==========================================
+# CREATE DATABASE TABLES
 # ==========================================
 
 def create_database():
@@ -39,166 +98,267 @@ def create_database():
         # REPAIRS TABLE
         # ==================================
 
-        connection.execute("""
-            CREATE TABLE IF NOT EXISTS repairs (
+        if USE_POSTGRES:
 
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS repairs (
 
-                repair_id TEXT UNIQUE NOT NULL,
+                    id SERIAL PRIMARY KEY,
 
-                name TEXT NOT NULL,
+                    repair_id TEXT UNIQUE NOT NULL,
 
-                phone TEXT NOT NULL,
+                    name TEXT NOT NULL,
 
-                device TEXT NOT NULL,
+                    phone TEXT NOT NULL,
 
-                brand TEXT NOT NULL,
+                    device TEXT NOT NULL,
 
-                model TEXT NOT NULL,
+                    brand TEXT NOT NULL,
 
-                issue TEXT NOT NULL,
+                    model TEXT NOT NULL,
 
-                description TEXT NOT NULL,
+                    issue TEXT NOT NULL,
 
-                contact_method TEXT NOT NULL,
+                    description TEXT NOT NULL,
 
-                status TEXT NOT NULL
-                    DEFAULT 'Request Received',
+                    contact_method TEXT NOT NULL,
 
-                created_at TIMESTAMP
-                    DEFAULT CURRENT_TIMESTAMP
+                    status TEXT NOT NULL
+                        DEFAULT 'Request Received',
 
+                    created_at TIMESTAMP
+                        DEFAULT CURRENT_TIMESTAMP
+
+                )
+                """
             )
-        """)
+
+        else:
+
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS repairs (
+
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                    repair_id TEXT UNIQUE NOT NULL,
+
+                    name TEXT NOT NULL,
+
+                    phone TEXT NOT NULL,
+
+                    device TEXT NOT NULL,
+
+                    brand TEXT NOT NULL,
+
+                    model TEXT NOT NULL,
+
+                    issue TEXT NOT NULL,
+
+                    description TEXT NOT NULL,
+
+                    contact_method TEXT NOT NULL,
+
+                    status TEXT NOT NULL
+                        DEFAULT 'Request Received',
+
+                    created_at TIMESTAMP
+                        DEFAULT CURRENT_TIMESTAMP
+
+                )
+                """
+            )
 
 
         # ==================================
         # PRODUCTS TABLE
         # ==================================
 
-        connection.execute("""
-            CREATE TABLE IF NOT EXISTS products (
+        if USE_POSTGRES:
 
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS products (
 
-                name TEXT NOT NULL,
+                    id SERIAL PRIMARY KEY,
 
-                description TEXT NOT NULL,
+                    name TEXT NOT NULL,
 
-                price INTEGER NOT NULL,
+                    description TEXT NOT NULL,
 
-                icon TEXT NOT NULL
-                    DEFAULT '📦',
+                    price INTEGER NOT NULL,
 
-                stock_status TEXT NOT NULL
-                    DEFAULT 'In Stock',
+                    icon TEXT NOT NULL
+                        DEFAULT '📦',
 
-                image TEXT
-                    DEFAULT '',
+                    stock_status TEXT NOT NULL
+                        DEFAULT 'In Stock',
 
-                created_at TIMESTAMP
-                    DEFAULT CURRENT_TIMESTAMP
+                    image TEXT
+                        DEFAULT '',
 
+                    created_at TIMESTAMP
+                        DEFAULT CURRENT_TIMESTAMP
+
+                )
+                """
             )
-        """)
+
+        else:
+
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS products (
+
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                    name TEXT NOT NULL,
+
+                    description TEXT NOT NULL,
+
+                    price INTEGER NOT NULL,
+
+                    icon TEXT NOT NULL
+                        DEFAULT '📦',
+
+                    stock_status TEXT NOT NULL
+                        DEFAULT 'In Stock',
+
+                    image TEXT
+                        DEFAULT '',
+
+                    created_at TIMESTAMP
+                        DEFAULT CURRENT_TIMESTAMP
+
+                )
+                """
+            )
 
 
         # ==================================
         # ORDERS TABLE
         # ==================================
 
-        connection.execute("""
-            CREATE TABLE IF NOT EXISTS orders (
+        if USE_POSTGRES:
 
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS orders (
 
-                order_id TEXT UNIQUE NOT NULL,
+                    id SERIAL PRIMARY KEY,
 
-                product_id INTEGER NOT NULL,
+                    order_id TEXT UNIQUE NOT NULL,
 
-                product_name TEXT NOT NULL,
+                    product_id INTEGER NOT NULL,
 
-                customer_name TEXT NOT NULL,
+                    product_name TEXT NOT NULL,
 
-                phone TEXT NOT NULL,
+                    customer_name TEXT NOT NULL,
 
-                quantity INTEGER NOT NULL
-                    DEFAULT 1,
+                    phone TEXT NOT NULL,
 
-                unit_price INTEGER NOT NULL,
+                    quantity INTEGER NOT NULL
+                        DEFAULT 1,
 
-                total_price INTEGER NOT NULL,
+                    unit_price INTEGER NOT NULL,
 
-                status TEXT NOT NULL
-                    DEFAULT 'Pending',
+                    total_price INTEGER NOT NULL,
 
-                created_at TIMESTAMP
-                    DEFAULT CURRENT_TIMESTAMP,
+                    status TEXT NOT NULL
+                        DEFAULT 'Pending',
 
-                FOREIGN KEY (product_id)
-                    REFERENCES products(id)
+                    created_at TIMESTAMP
+                        DEFAULT CURRENT_TIMESTAMP
 
+                )
+                """
             )
-        """)
 
+        else:
 
-        # ==================================
-        # MIGRATION:
-        # ADD IMAGE COLUMN IF MISSING
-        # ==================================
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS orders (
 
-        product_columns = connection.execute(
-            """
-            PRAGMA table_info(products)
-            """
-        ).fetchall()
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
 
+                    order_id TEXT UNIQUE NOT NULL,
 
-        column_names = {
-            column["name"]
-            for column in product_columns
-        }
+                    product_id INTEGER NOT NULL,
 
+                    product_name TEXT NOT NULL,
 
-        if "image" not in column_names:
+                    customer_name TEXT NOT NULL,
 
-            connection.execute("""
-                ALTER TABLE products
-                ADD COLUMN image TEXT
-                DEFAULT ''
-            """)
+                    phone TEXT NOT NULL,
+
+                    quantity INTEGER NOT NULL
+                        DEFAULT 1,
+
+                    unit_price INTEGER NOT NULL,
+
+                    total_price INTEGER NOT NULL,
+
+                    status TEXT NOT NULL
+                        DEFAULT 'Pending',
+
+                    created_at TIMESTAMP
+                        DEFAULT CURRENT_TIMESTAMP
+
+                )
+                """
+            )
 
 
         # ==================================
         # INDEXES
         # ==================================
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             CREATE INDEX IF NOT EXISTS
             idx_repairs_repair_id
             ON repairs(repair_id)
-        """)
+            """
+        )
 
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             CREATE INDEX IF NOT EXISTS
             idx_repairs_status
             ON repairs(status)
-        """)
+            """
+        )
 
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             CREATE INDEX IF NOT EXISTS
             idx_orders_order_id
             ON orders(order_id)
-        """)
+            """
+        )
 
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             CREATE INDEX IF NOT EXISTS
             idx_orders_status
             ON orders(status)
-        """)
+            """
+        )
 
 
         connection.commit()
@@ -229,7 +389,9 @@ def add_repair(
 
     try:
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             INSERT INTO repairs (
 
                 repair_id,
@@ -245,20 +407,19 @@ def add_repair(
             )
 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-
-        """, (
-
-            repair_id,
-            name,
-            phone,
-            device,
-            brand,
-            model,
-            issue,
-            description,
-            contact_method
-
-        ))
+            """,
+            (
+                repair_id,
+                name,
+                phone,
+                device,
+                brand,
+                model,
+                issue,
+                description,
+                contact_method
+            )
+        )
 
         connection.commit()
 
@@ -280,15 +441,19 @@ def get_repair(
 
     try:
 
-        repair = connection.execute("""
+        cursor = execute_query(
+            connection,
+            """
             SELECT *
             FROM repairs
             WHERE repair_id = ?
-        """, (
-            repair_id,
-        )).fetchone()
+            """,
+            (
+                repair_id,
+            )
+        )
 
-        return repair
+        return cursor.fetchone()
 
 
     finally:
@@ -306,13 +471,16 @@ def get_all_repairs():
 
     try:
 
-        repairs = connection.execute("""
+        cursor = execute_query(
+            connection,
+            """
             SELECT *
             FROM repairs
             ORDER BY id DESC
-        """).fetchall()
+            """
+        )
 
-        return repairs
+        return cursor.fetchall()
 
 
     finally:
@@ -333,14 +501,20 @@ def update_repair_status(
 
     try:
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             UPDATE repairs
+
             SET status = ?
+
             WHERE repair_id = ?
-        """, (
-            status,
-            repair_id
-        ))
+            """,
+            (
+                status,
+                repair_id
+            )
+        )
 
         connection.commit()
 
@@ -367,7 +541,9 @@ def add_product(
 
     try:
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             INSERT INTO products (
 
                 name,
@@ -380,17 +556,16 @@ def add_product(
             )
 
             VALUES (?, ?, ?, ?, ?, ?)
-
-        """, (
-
-            name,
-            description,
-            price,
-            icon,
-            stock_status,
-            image
-
-        ))
+            """,
+            (
+                name,
+                description,
+                price,
+                icon,
+                stock_status,
+                image
+            )
+        )
 
         connection.commit()
 
@@ -410,13 +585,16 @@ def get_all_products():
 
     try:
 
-        products = connection.execute("""
+        cursor = execute_query(
+            connection,
+            """
             SELECT *
             FROM products
             ORDER BY id DESC
-        """).fetchall()
+            """
+        )
 
-        return products
+        return cursor.fetchall()
 
 
     finally:
@@ -436,15 +614,19 @@ def get_product(
 
     try:
 
-        product = connection.execute("""
+        cursor = execute_query(
+            connection,
+            """
             SELECT *
             FROM products
             WHERE id = ?
-        """, (
-            product_id,
-        )).fetchone()
+            """,
+            (
+                product_id,
+            )
+        )
 
-        return product
+        return cursor.fetchone()
 
 
     finally:
@@ -470,7 +652,9 @@ def update_product(
 
     try:
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             UPDATE products
 
             SET
@@ -482,17 +666,17 @@ def update_product(
                 image = ?
 
             WHERE id = ?
-        """, (
-
-            name,
-            description,
-            price,
-            icon,
-            stock_status,
-            image,
-            product_id
-
-        ))
+            """,
+            (
+                name,
+                description,
+                price,
+                icon,
+                stock_status,
+                image,
+                product_id
+            )
+        )
 
         connection.commit()
 
@@ -514,12 +698,16 @@ def delete_product(
 
     try:
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             DELETE FROM products
             WHERE id = ?
-        """, (
-            product_id,
-        ))
+            """,
+            (
+                product_id,
+            )
+        )
 
         connection.commit()
 
@@ -548,7 +736,9 @@ def add_order(
 
     try:
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             INSERT INTO orders (
 
                 order_id,
@@ -563,19 +753,18 @@ def add_order(
             )
 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-
-        """, (
-
-            order_id,
-            product_id,
-            product_name,
-            customer_name,
-            phone,
-            quantity,
-            unit_price,
-            total_price
-
-        ))
+            """,
+            (
+                order_id,
+                product_id,
+                product_name,
+                customer_name,
+                phone,
+                quantity,
+                unit_price,
+                total_price
+            )
+        )
 
         connection.commit()
 
@@ -597,15 +786,19 @@ def get_order(
 
     try:
 
-        order = connection.execute("""
+        cursor = execute_query(
+            connection,
+            """
             SELECT *
             FROM orders
             WHERE order_id = ?
-        """, (
-            order_id,
-        )).fetchone()
+            """,
+            (
+                order_id,
+            )
+        )
 
-        return order
+        return cursor.fetchone()
 
 
     finally:
@@ -623,13 +816,16 @@ def get_all_orders():
 
     try:
 
-        orders = connection.execute("""
+        cursor = execute_query(
+            connection,
+            """
             SELECT *
             FROM orders
             ORDER BY id DESC
-        """).fetchall()
+            """
+        )
 
-        return orders
+        return cursor.fetchall()
 
 
     finally:
@@ -650,14 +846,20 @@ def update_order_status(
 
     try:
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             UPDATE orders
+
             SET status = ?
+
             WHERE order_id = ?
-        """, (
-            status,
-            order_id
-        ))
+            """,
+            (
+                status,
+                order_id
+            )
+        )
 
         connection.commit()
 
@@ -679,12 +881,16 @@ def delete_order(
 
     try:
 
-        connection.execute("""
+        execute_query(
+            connection,
+            """
             DELETE FROM orders
             WHERE order_id = ?
-        """, (
-            order_id,
-        ))
+            """,
+            (
+                order_id,
+            )
+        )
 
         connection.commit()
 
