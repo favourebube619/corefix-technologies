@@ -4,6 +4,8 @@
 # REPAIRS + PRODUCTS + IMAGES + ORDERS
 # =====================================================
 
+import cloudinary
+import cloudinary.uploader
 import hmac
 import os
 import secrets
@@ -20,8 +22,6 @@ from flask import (
     session,
     url_for,
 )
-from werkzeug.utils import secure_filename
-
 from database import (
     # Repairs
     create_database,
@@ -51,6 +51,26 @@ from database import (
 # =====================================================
 
 load_dotenv()
+
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "").strip()
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "").strip()
+
+CLOUDINARY_CONFIGURED = all(
+    [
+        CLOUDINARY_CLOUD_NAME,
+        CLOUDINARY_API_KEY,
+        CLOUDINARY_API_SECRET,
+    ]
+)
+
+if CLOUDINARY_CONFIGURED:
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True,
+    )
 
 
 # =====================================================
@@ -92,13 +112,6 @@ app.config.update(
 # PRODUCT IMAGE UPLOAD CONFIGURATION
 # =====================================================
 
-UPLOAD_FOLDER = os.path.join(
-    app.root_path,
-    "static",
-    "assets",
-    "products",
-)
-
 ALLOWED_EXTENSIONS = {
     "png",
     "jpg",
@@ -111,11 +124,6 @@ ALLOWED_IMAGE_MIMETYPES = {
     "image/jpeg",
     "image/webp",
 }
-
-os.makedirs(
-    UPLOAD_FOLDER,
-    exist_ok=True,
-)
 
 
 # =====================================================
@@ -686,6 +694,12 @@ def admin_delete_product(product_id):
 @admin_required
 def upload_product_image():
     try:
+        if not CLOUDINARY_CONFIGURED:
+            return json_error(
+                "Cloudinary is not configured on the server.",
+                500,
+            )
+
         if "image" not in request.files:
             return json_error("No image received.", 400)
 
@@ -703,26 +717,37 @@ def upload_product_image():
         if image.mimetype not in ALLOWED_IMAGE_MIMETYPES:
             return json_error("Invalid image file type.", 400)
 
-        original_name = secure_filename(image.filename)
+        upload_result = cloudinary.uploader.upload(
+            image,
+            folder="corefix/products",
+            resource_type="image",
+            use_filename=False,
+            unique_filename=True,
+            overwrite=False,
+        )
 
-        if not original_name or "." not in original_name:
-            return json_error("Invalid image filename.", 400)
+        image_url = str(
+            upload_result.get("secure_url", "")
+        ).strip()
 
-        extension = original_name.rsplit(".", 1)[1].lower()
-        unique_name = f"product_{secrets.token_hex(12)}.{extension}"
-        save_path = os.path.join(UPLOAD_FOLDER, unique_name)
-
-        image.save(save_path)
+        if not image_url:
+            return json_error(
+                "Cloud image upload failed.",
+                500,
+            )
 
         return jsonify({
             "success": True,
             "message": "Product image uploaded successfully.",
-            "filename": unique_name,
+            "filename": image_url,
         }), 201
 
     except Exception as error:
         print("Product image upload error:", error)
-        return json_error("Unable to upload product image.", 500)
+        return json_error(
+            "Unable to upload product image.",
+            500,
+        )
 
 
 # =====================================================
