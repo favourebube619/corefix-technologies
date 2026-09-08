@@ -3827,6 +3827,7 @@ body.modal-open {
 
 }
 
+
 /* =====================================================
    FINAL ACCESSORIES CARD FIX
 ===================================================== */
@@ -4135,6 +4136,84 @@ body.modal-open {
     .product-bottom {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .order-btn {
+        width: 100%;
+    }
+}
+
+
+/* =====================================================
+   FINAL ACCESSORIES SIZE + NAVBAR FIX
+===================================================== */
+
+.accessories-section {
+    scroll-margin-top: 80px;
+    padding-top: 120px;
+}
+
+
+/* Keep cards compact */
+
+.product-card {
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+
+/* Product information */
+
+.product-card-content {
+    flex: initial;
+    padding: 22px 22px 24px;
+}
+
+
+/* Description */
+
+.product-description,
+.product-card p {
+    min-height: 0;
+    margin-top: 10px;
+}
+
+
+/* Price + order button should stay close to content */
+
+.product-bottom {
+    margin-top: 24px;
+    padding-top: 0;
+}
+
+
+/* Make image slightly more compact */
+
+.product-image-wrapper,
+.product-icon {
+    height: 250px;
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 700px) {
+
+    .accessories-section {
+        padding-top: 100px;
+    }
+
+    .product-image-wrapper,
+    .product-icon {
+        height: 230px;
+    }
+
+    .product-bottom {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
     }
 
     .order-btn {
