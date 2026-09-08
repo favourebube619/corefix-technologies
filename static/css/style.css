@@ -4220,3 +4220,31 @@ body.modal-open {
         width: 100%;
     }
 }
+
+
+/* =====================================================
+   ACCESSORIES FINAL POLISH
+===================================================== */
+
+.accessories-section {
+    padding-top: 150px !important;
+    scroll-margin-top: 90px;
+}
+
+.product-card-content {
+    padding-bottom: 28px !important;
+}
+
+.product-bottom {
+    margin-top: 22px !important;
+    padding-bottom: 4px;
+}
+
+.product-price {
+    display: block;
+    line-height: 1.25;
+}
+
+.order-btn {
+    margin-bottom: 0;
+}
