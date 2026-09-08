@@ -1495,10 +1495,15 @@ function startProductEdit(
         productImagePreviewWrapper
     ) {
 
-        productImagePreview.src =
-            `/static/assets/products/${encodeURIComponent(
-                product.image
-            )}`;
+        const previewUrl =
+    product.image.startsWith("http://") ||
+    product.image.startsWith("https://")
+        ? product.image
+        : `/static/assets/products/${encodeURIComponent(
+            product.image
+        )}`;
+
+productImagePreview.src = previewUrl;
 
 
         productImagePreviewWrapper
