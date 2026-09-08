@@ -163,6 +163,36 @@ def allowed_file(filename):
     )
 
 
+def delete_cloudinary_image(public_id):
+    """Safely delete a Cloudinary image by public_id."""
+    public_id = str(public_id or "").strip()
+
+    if not public_id:
+        return True
+
+    if not CLOUDINARY_CONFIGURED:
+        print("Cloudinary cleanup skipped: Cloudinary is not configured.")
+        return False
+
+    try:
+        result = cloudinary.uploader.destroy(
+            public_id,
+            resource_type="image",
+            invalidate=True,
+        )
+        status = str(result.get("result", "")).lower()
+
+        if status in {"ok", "not found"}:
+            return True
+
+        print("Cloudinary cleanup warning:", public_id, result)
+        return False
+
+    except Exception as error:
+        print("Cloudinary cleanup error:", public_id, error)
+        return False
+
+
 def generate_repair_id():
     while True:
         year = datetime.now().year
@@ -501,6 +531,7 @@ def public_products():
                 "icon": product["icon"],
                 "stockStatus": product["stock_status"],
                 "image": product["image"] or "",
+                "imagePublicId": product["image_public_id"] or "",
             }
             for product in products
         ]
@@ -536,6 +567,7 @@ def admin_add_product():
         icon = str(data.get("icon", "📦")).strip() or "📦"
         stock_status = str(data.get("stockStatus", "In Stock")).strip()
         image = str(data.get("image", "")).strip()
+        image_public_id = str(data.get("imagePublicId", "")).strip()
 
         try:
             price = int(data.get("price", 0))
@@ -567,6 +599,7 @@ def admin_add_product():
             icon,
             stock_status,
             image,
+            image_public_id,
         )
 
         return jsonify({
@@ -608,9 +641,19 @@ def admin_update_product(product_id):
         stock_status = str(
             data.get("stockStatus", product["stock_status"])
         ).strip()
+        old_image = str(product["image"] or "").strip()
+        old_image_public_id = str(product["image_public_id"] or "").strip()
+
         image = str(
-            data.get("image", product["image"] or "")
+            data.get("image", old_image)
         ).strip()
+
+        if "imagePublicId" in data:
+            image_public_id = str(data.get("imagePublicId", "")).strip()
+        elif image == old_image:
+            image_public_id = old_image_public_id
+        else:
+            image_public_id = ""
 
         try:
             price = int(data.get("price", product["price"]))
@@ -643,7 +686,11 @@ def admin_update_product(product_id):
             icon,
             stock_status,
             image,
+            image_public_id,
         )
+
+        if old_image_public_id and old_image_public_id != image_public_id:
+            delete_cloudinary_image(old_image_public_id)
 
         return jsonify({
             "success": True,
@@ -671,7 +718,12 @@ def admin_delete_product(product_id):
         if not product:
             return json_error("Product not found.", 404)
 
+        image_public_id = str(product["image_public_id"] or "").strip()
+
         delete_product(product_id)
+
+        if image_public_id:
+            delete_cloudinary_image(image_public_id)
 
         return jsonify({
             "success": True,
@@ -730,7 +782,14 @@ def upload_product_image():
             upload_result.get("secure_url", "")
         ).strip()
 
-        if not image_url:
+        image_public_id = str(
+            upload_result.get("public_id", "")
+        ).strip()
+
+        if not image_url or not image_public_id:
+            if image_public_id:
+                delete_cloudinary_image(image_public_id)
+
             return json_error(
                 "Cloud image upload failed.",
                 500,
@@ -740,6 +799,7 @@ def upload_product_image():
             "success": True,
             "message": "Product image uploaded successfully.",
             "filename": image_url,
+            "publicId": image_public_id,
         }), 201
 
     except Exception as error:

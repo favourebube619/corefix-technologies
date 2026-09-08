@@ -746,27 +746,31 @@ function displayProducts() {
 
 
             if (
-    product.image &&
-    product.image.trim() !== ""
-) {
-    const imageUrl =
-        product.image.startsWith("http://") ||
-        product.image.startsWith("https://")
-            ? product.image
-            : `/static/assets/products/${encodeURIComponent(
-                product.image
-            )}`;
+                product.image &&
+                product.image.trim() !== ""
+            ) {
 
-    imagePreview = `
-        <img
-            src="${escapeHTML(imageUrl)}"
-            alt="${escapeHTML(
-                product.name
-            )}"
-            class="admin-product-image"
-        >
-    `;
-}
+                const imageUrl =
+                    product.image.startsWith("http://") ||
+                    product.image.startsWith("https://")
+                        ? product.image
+                        : `/static/assets/products/${encodeURIComponent(
+                            product.image
+                        )}`;
+
+
+                imagePreview = `
+
+                    <img
+                        src="${escapeHTML(imageUrl)}"
+                        alt="${escapeHTML(
+                            product.name
+                        )}"
+                        class="admin-product-image"
+                    >
+
+                `;
+            }
 
 
             row.innerHTML = `
@@ -803,11 +807,9 @@ function displayProducts() {
 
 
                 <td>
-
                     ₦${formatPrice(
                         product.price
                     )}
-
                 </td>
 
 
@@ -976,7 +978,6 @@ if (productImageFile) {
     );
 }
 
-
 /* =====================================================
    HIDE PRODUCT IMAGE PREVIEW
 ===================================================== */
@@ -1010,7 +1011,8 @@ async function uploadProductImage() {
 
     /*
        If no new image is selected while editing,
-       keep the existing filename.
+       keep the existing image URL and Cloudinary
+       public ID.
     */
 
     if (
@@ -1019,9 +1021,41 @@ async function uploadProductImage() {
         productImageFile.files.length === 0
     ) {
 
-        return productImage
-            ? productImage.value.trim()
-            : "";
+        let existingPublicId = "";
+
+
+        if (
+            editingProductId !== null
+        ) {
+
+            const existingProduct =
+                allProducts.find(
+                    product =>
+                        Number(product.id) ===
+                        Number(editingProductId)
+                );
+
+
+            if (existingProduct) {
+
+                existingPublicId =
+                    existingProduct.imagePublicId ||
+                    "";
+            }
+        }
+
+
+        return {
+
+            image:
+                productImage
+                    ? productImage.value.trim()
+                    : "",
+
+            publicId:
+                existingPublicId
+
+        };
     }
 
 
@@ -1039,8 +1073,11 @@ async function uploadProductImage() {
         await fetch(
             "/api/admin/products/upload-image",
             {
-                method: "POST",
-                body: formData
+                method:
+                    "POST",
+
+                body:
+                    formData
             }
         );
 
@@ -1085,7 +1122,15 @@ async function uploadProductImage() {
     }
 
 
-    return data.filename;
+    return {
+
+        image:
+            data.filename || "",
+
+        publicId:
+            data.publicId || ""
+
+    };
 }
 
 
@@ -1213,7 +1258,11 @@ if (productForm) {
                             : "In Stock",
 
                     image:
-                        uploadedImage
+                        uploadedImage.image,
+
+                    imagePublicId:
+                        uploadedImage.publicId
+
                 };
 
 
@@ -1264,8 +1313,20 @@ if (productForm) {
                     );
 
 
-                const data =
-                    await response.json();
+                let data;
+
+
+                try {
+
+                    data =
+                        await response.json();
+
+                } catch (error) {
+
+                    throw new Error(
+                        "Invalid response from product server."
+                    );
+                }
 
 
                 if (!response.ok) {
@@ -1463,7 +1524,7 @@ function startProductEdit(
 
     /*
        Hidden input keeps the current
-       image filename while editing.
+       image URL while editing.
     */
 
     if (productImage) {
@@ -1487,6 +1548,10 @@ function startProductEdit(
 
     /*
        Display existing image.
+
+       Cloudinary URLs are used directly.
+       Older local images continue to use
+       /static/assets/products/.
     */
 
     if (
@@ -1496,14 +1561,16 @@ function startProductEdit(
     ) {
 
         const previewUrl =
-    product.image.startsWith("http://") ||
-    product.image.startsWith("https://")
-        ? product.image
-        : `/static/assets/products/${encodeURIComponent(
-            product.image
-        )}`;
+            product.image.startsWith("http://") ||
+            product.image.startsWith("https://")
+                ? product.image
+                : `/static/assets/products/${encodeURIComponent(
+                    product.image
+                )}`;
 
-productImagePreview.src = previewUrl;
+
+        productImagePreview.src =
+            previewUrl;
 
 
         productImagePreviewWrapper
@@ -1535,8 +1602,11 @@ productImagePreview.src = previewUrl;
     if (productForm) {
 
         productForm.scrollIntoView({
-            behavior: "smooth",
-            block: "center"
+            behavior:
+                "smooth",
+
+            block:
+                "center"
         });
     }
 }
@@ -1648,13 +1718,26 @@ async function deleteProduct(
             await fetch(
                 `/api/admin/products/${productId}`,
                 {
-                    method: "DELETE"
+                    method:
+                        "DELETE"
                 }
             );
 
 
-        const data =
-            await response.json();
+        let data;
+
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch (error) {
+
+            throw new Error(
+                "Invalid response from product server."
+            );
+        }
 
 
         if (!response.ok) {
@@ -1764,7 +1847,8 @@ async function loadOrders() {
         if (!response.ok) {
 
             if (
-                response.status === 401
+                response.status ===
+                401
             ) {
 
                 window.location.href =
@@ -1806,7 +1890,6 @@ async function loadOrders() {
         }
     }
 }
-
 
 /* =====================================================
    DISPLAY ORDERS
@@ -1972,6 +2055,7 @@ function displayOrders() {
             emptyOrders.style.display =
                 "block";
         }
+
 
         updateOrderStats();
 
@@ -2234,7 +2318,6 @@ if (orderSearch) {
         function() {
 
             displayOrders();
-
         }
     );
 }
@@ -2251,7 +2334,6 @@ if (orderStatusFilter) {
         function() {
 
             displayOrders();
-
         }
     );
 }
@@ -2268,7 +2350,6 @@ if (orderSort) {
         function() {
 
             displayOrders();
-
         }
     );
 }
@@ -2362,7 +2443,6 @@ function updateOrderStats() {
                 revenue
             )}`;
     }
-
 }
 
 

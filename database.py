@@ -20,10 +20,7 @@ DATABASE_URL = os.getenv(
     ""
 ).strip()
 
-
-USE_POSTGRES = bool(
-    DATABASE_URL
-)
+USE_POSTGRES = bool(DATABASE_URL)
 
 
 # ==========================================
@@ -40,7 +37,6 @@ def get_connection():
         )
 
         return connection
-
 
     connection = sqlite3.connect(
         SQLITE_DATABASE
@@ -76,7 +72,6 @@ def execute_query(
         )
 
         return cursor
-
 
     return connection.execute(
         query,
@@ -201,6 +196,9 @@ def create_database():
                     image TEXT
                         DEFAULT '',
 
+                    image_public_id TEXT
+                        DEFAULT '',
+
                     created_at TIMESTAMP
                         DEFAULT CURRENT_TIMESTAMP
 
@@ -232,12 +230,65 @@ def create_database():
                     image TEXT
                         DEFAULT '',
 
+                    image_public_id TEXT
+                        DEFAULT '',
+
                     created_at TIMESTAMP
                         DEFAULT CURRENT_TIMESTAMP
 
                 )
                 """
             )
+
+
+        # ==================================
+        # PRODUCT TABLE MIGRATION
+        # ==================================
+        #
+        # Existing databases were created
+        # before image_public_id existed.
+        #
+        # CREATE TABLE IF NOT EXISTS does
+        # not add new columns to an existing
+        # table, so we migrate it safely.
+        # ==================================
+
+        if USE_POSTGRES:
+
+            execute_query(
+                connection,
+                """
+                ALTER TABLE products
+                ADD COLUMN IF NOT EXISTS
+                image_public_id TEXT
+                DEFAULT ''
+                """
+            )
+
+        else:
+
+            cursor = execute_query(
+                connection,
+                """
+                PRAGMA table_info(products)
+                """
+            )
+
+            columns = [
+                row["name"]
+                for row in cursor.fetchall()
+            ]
+
+            if "image_public_id" not in columns:
+
+                execute_query(
+                    connection,
+                    """
+                    ALTER TABLE products
+                    ADD COLUMN image_public_id TEXT
+                    DEFAULT ''
+                    """
+                )
 
 
         # ==================================
@@ -330,7 +381,6 @@ def create_database():
             """
         )
 
-
         execute_query(
             connection,
             """
@@ -339,7 +389,6 @@ def create_database():
             ON repairs(status)
             """
         )
-
 
         execute_query(
             connection,
@@ -350,7 +399,6 @@ def create_database():
             """
         )
 
-
         execute_query(
             connection,
             """
@@ -360,9 +408,12 @@ def create_database():
             """
         )
 
-
         connection.commit()
 
+    except Exception:
+
+        connection.rollback()
+        raise
 
     finally:
 
@@ -423,6 +474,10 @@ def add_repair(
 
         connection.commit()
 
+    except Exception:
+
+        connection.rollback()
+        raise
 
     finally:
 
@@ -455,7 +510,6 @@ def get_repair(
 
         return cursor.fetchone()
 
-
     finally:
 
         connection.close()
@@ -481,7 +535,6 @@ def get_all_repairs():
         )
 
         return cursor.fetchall()
-
 
     finally:
 
@@ -518,6 +571,10 @@ def update_repair_status(
 
         connection.commit()
 
+    except Exception:
+
+        connection.rollback()
+        raise
 
     finally:
 
@@ -534,7 +591,8 @@ def add_product(
     price,
     icon,
     stock_status,
-    image
+    image,
+    image_public_id=""
 ):
 
     connection = get_connection()
@@ -551,11 +609,12 @@ def add_product(
                 price,
                 icon,
                 stock_status,
-                image
+                image,
+                image_public_id
 
             )
 
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 name,
@@ -563,12 +622,17 @@ def add_product(
                 price,
                 icon,
                 stock_status,
-                image
+                image,
+                image_public_id
             )
         )
 
         connection.commit()
 
+    except Exception:
+
+        connection.rollback()
+        raise
 
     finally:
 
@@ -595,7 +659,6 @@ def get_all_products():
         )
 
         return cursor.fetchall()
-
 
     finally:
 
@@ -628,7 +691,6 @@ def get_product(
 
         return cursor.fetchone()
 
-
     finally:
 
         connection.close()
@@ -645,7 +707,8 @@ def update_product(
     price,
     icon,
     stock_status,
-    image
+    image,
+    image_public_id=""
 ):
 
     connection = get_connection()
@@ -663,7 +726,8 @@ def update_product(
                 price = ?,
                 icon = ?,
                 stock_status = ?,
-                image = ?
+                image = ?,
+                image_public_id = ?
 
             WHERE id = ?
             """,
@@ -674,12 +738,17 @@ def update_product(
                 icon,
                 stock_status,
                 image,
+                image_public_id,
                 product_id
             )
         )
 
         connection.commit()
 
+    except Exception:
+
+        connection.rollback()
+        raise
 
     finally:
 
@@ -711,6 +780,10 @@ def delete_product(
 
         connection.commit()
 
+    except Exception:
+
+        connection.rollback()
+        raise
 
     finally:
 
@@ -768,6 +841,10 @@ def add_order(
 
         connection.commit()
 
+    except Exception:
+
+        connection.rollback()
+        raise
 
     finally:
 
@@ -800,7 +877,6 @@ def get_order(
 
         return cursor.fetchone()
 
-
     finally:
 
         connection.close()
@@ -826,7 +902,6 @@ def get_all_orders():
         )
 
         return cursor.fetchall()
-
 
     finally:
 
@@ -863,6 +938,10 @@ def update_order_status(
 
         connection.commit()
 
+    except Exception:
+
+        connection.rollback()
+        raise
 
     finally:
 
@@ -894,6 +973,10 @@ def delete_order(
 
         connection.commit()
 
+    except Exception:
+
+        connection.rollback()
+        raise
 
     finally:
 
