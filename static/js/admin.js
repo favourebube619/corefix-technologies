@@ -746,24 +746,27 @@ function displayProducts() {
 
 
             if (
-                product.image &&
-                product.image.trim() !== ""
-            ) {
+    product.image &&
+    product.image.trim() !== ""
+) {
+    const imageUrl =
+        product.image.startsWith("http://") ||
+        product.image.startsWith("https://")
+            ? product.image
+            : `/static/assets/products/${encodeURIComponent(
+                product.image
+            )}`;
 
-                imagePreview = `
-
-                    <img
-                        src="/static/assets/products/${encodeURIComponent(
-                            product.image
-                        )}"
-                        alt="${escapeHTML(
-                            product.name
-                        )}"
-                        class="admin-product-image"
-                    >
-
-                `;
-            }
+    imagePreview = `
+        <img
+            src="${escapeHTML(imageUrl)}"
+            alt="${escapeHTML(
+                product.name
+            )}"
+            class="admin-product-image"
+        >
+    `;
+}
 
 
             row.innerHTML = `
