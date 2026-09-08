@@ -4399,3 +4399,75 @@ body.modal-open {
         min-height: 52px;
     }
 }
+
+
+/* =====================================================
+   ORDER MODAL — DESKTOP HEIGHT FIX
+===================================================== */
+
+@media (min-width: 701px) {
+
+    .order-modal-dialog {
+        width: min(650px, calc(100% - 40px));
+        max-height: calc(100vh - 30px);
+        padding: 22px 28px 24px;
+        overflow-y: auto;
+    }
+
+    .order-modal-header {
+        margin-bottom: 16px;
+    }
+
+    .order-modal-header h2 {
+        margin: 3px 0 0;
+        font-size: 30px;
+    }
+
+    .order-modal-header .section-label {
+        margin-bottom: 2px;
+    }
+
+    .order-product-summary {
+        padding: 14px 20px;
+        margin-bottom: 18px;
+    }
+
+    .order-product-summary h3 {
+        margin: 3px 0;
+        font-size: 20px;
+    }
+
+    .order-form-group {
+        margin-bottom: 13px;
+    }
+
+    .order-form-group label {
+        margin-bottom: 6px;
+        font-size: 15px;
+    }
+
+    .order-form-group input {
+        height: 48px;
+        padding: 0 16px;
+        font-size: 15px;
+    }
+
+    .order-total-box {
+        margin-top: 4px;
+        padding: 14px 18px;
+    }
+
+    .order-total-box strong {
+        font-size: 22px;
+    }
+
+    .order-submit-btn {
+        min-height: 50px;
+        margin-top: 12px;
+    }
+
+    .order-modal-close {
+        top: 12px;
+        right: 12px;
+    }
+}
