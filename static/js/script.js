@@ -197,19 +197,11 @@ if (repairForm) {
                 }
 
 
-                /* =====================================
-                   SAVE REPAIR ID
-                ===================================== */
-
                 sessionStorage.setItem(
                     "lastRepairId",
                     data.repairId
                 );
 
-
-                /* =====================================
-                   DISPLAY REPAIR ID
-                ===================================== */
 
                 if (generatedRepairId) {
 
@@ -218,17 +210,9 @@ if (repairForm) {
                 }
 
 
-                /* =====================================
-                   HIDE FORM
-                ===================================== */
-
                 repairForm.style.display =
                     "none";
 
-
-                /* =====================================
-                   SHOW SUCCESS MESSAGE
-                ===================================== */
 
                 if (successMessage) {
 
@@ -274,12 +258,6 @@ if (repairForm) {
 
 
             } finally {
-
-                /*
-                   Always restore the button.
-                   This is important if the customer
-                   chooses Book Another Repair.
-                */
 
                 submitButton.disabled =
                     false;
@@ -900,7 +878,6 @@ function updateRepairProgress(
     );
 }
 
-
 /* =====================================================
    SMOOTH NAVIGATION
 ===================================================== */
@@ -939,19 +916,78 @@ navigationLinks.forEach(
                     );
 
 
-                if (targetSection) {
-
-                    event.preventDefault();
-
-
-                    targetSection
-                        .scrollIntoView({
-
-                            behavior:
-                                "smooth"
-
-                        });
+                if (!targetSection) {
+                    return;
                 }
+
+
+                event.preventDefault();
+
+
+                /* =====================================
+                   START A NEW REPAIR WHEN BOOK REPAIR
+                   IS CLICKED
+                ===================================== */
+
+                if (
+                    targetId === "#booking"
+                ) {
+
+                    sessionStorage.removeItem(
+                        "lastRepairId"
+                    );
+
+
+                    if (successMessage) {
+
+                        successMessage.style.display =
+                            "none";
+                    }
+
+
+                    if (generatedRepairId) {
+
+                        generatedRepairId.textContent =
+                            "";
+                    }
+
+
+                    if (repairForm) {
+
+                        repairForm.style.display =
+                            "grid";
+
+
+                        const submitButton =
+                            repairForm.querySelector(
+                                ".booking-btn"
+                            );
+
+
+                        if (submitButton) {
+
+                            submitButton.disabled =
+                                false;
+
+
+                            submitButton.textContent =
+                                "Submit Repair Request";
+                        }
+                    }
+                }
+
+
+                targetSection
+                    .scrollIntoView({
+
+                        behavior:
+                            "smooth",
+
+                        block:
+                            "start"
+
+                    });
+
             }
         );
     }
@@ -1502,8 +1538,8 @@ async function loadAccessories() {
             data.products || [];
 
 
-            window.corefixProducts =
-    products;
+        window.corefixProducts =
+            products;
 
 
         accessoriesGrid.innerHTML =
@@ -1549,7 +1585,7 @@ async function loadAccessories() {
 
                 const card =
                     document.createElement(
-                        "div"
+                        "article"
                     );
 
 
@@ -1601,28 +1637,38 @@ async function loadAccessories() {
 
 
                 if (
-    product.image &&
-    product.image.trim() !== ""
-) {
-    const imageUrl =
-        product.image.startsWith("http://") ||
-        product.image.startsWith("https://")
-            ? product.image
-            : `/static/assets/products/${encodeURIComponent(
-                product.image
-            )}`;
+                    product.image &&
+                    product.image.trim() !== ""
+                ) {
 
-    productVisual = `
-        <div class="product-image-wrapper">
-            <img
-                src="${escapeProductHTML(imageUrl)}"
-                alt="${escapeProductHTML(product.name)}"
-                class="product-image"
-                loading="lazy"
-            >
-        </div>
-    `;
-}
+                    const imageUrl =
+                        product.image.startsWith("http://") ||
+                        product.image.startsWith("https://")
+                            ? product.image
+                            : `/static/assets/products/${encodeURIComponent(
+                                product.image
+                            )}`;
+
+
+                    productVisual = `
+
+                        <div class="product-image-wrapper">
+
+                            <img
+                                src="${escapeProductHTML(
+                                    imageUrl
+                                )}"
+                                alt="${escapeProductHTML(
+                                    product.name
+                                )}"
+                                class="product-image"
+                                loading="lazy"
+                            >
+
+                        </div>
+
+                    `;
+                }
 
 
                 /* =====================================
@@ -1631,83 +1677,101 @@ async function loadAccessories() {
 
                 card.innerHTML = `
 
-                    ${productVisual}
+                    <div class="product-card-media">
+
+                        ${productVisual}
 
 
-                    <h3>
+                        <span
+                            class="
+                                product-stock
+                                ${stockClass}
+                            "
+                        >
 
-                        ${escapeProductHTML(
-                            product.name
-                        )}
-
-                    </h3>
-
-
-                    <p>
-
-                        ${escapeProductHTML(
-                            product.description
-                        )}
-
-                    </p>
-
-
-                    <div
-                        class="
-                            product-stock
-                            ${stockClass}
-                        "
-                    >
-
-                        ${escapeProductHTML(
-                            product.stockStatus ||
-                            "In Stock"
-                        )}
-
-                    </div>
-
-
-                    <div class="product-bottom">
-
-
-                        <span class="product-price">
-
-                            ₦${formatProductPrice(
-                                product.price
+                            ${escapeProductHTML(
+                                product.stockStatus ||
+                                "In Stock"
                             )}
 
                         </span>
 
+                    </div>
 
-                           <button
-                               type="button"
-                               class="order-btn"
-                               data-id="${product.id}"
-    
 
-                            data-product="${escapeProductHTML(
-                                product.name
-                            )}"
+                    <div class="product-card-content">
 
-                            data-price="₦${formatProductPrice(
-                                product.price
-                            )}"
+                        <div class="product-card-heading">
 
-                            ${
-                                isOutOfStock
-                                    ? "disabled"
-                                    : ""
-                            }
-                        >
+                            <h3>
 
-                            ${
-                                isOutOfStock
-                                    ? "Out of Stock"
-                                    : "Order"
-                            }
+                                ${escapeProductHTML(
+                                    product.name
+                                )}
 
-                        </button>
+                            </h3>
 
+                        </div>
+
+
+                        <p class="product-description">
+
+                            ${escapeProductHTML(
+                                product.description
+                            )}
+
+                        </p>
+
+
+                        <div class="product-bottom">
+
+                            <div class="product-price-wrap">
+
+                                <span class="product-price-label">
+                                    Price
+                                </span>
+
+
+                                <span class="product-price">
+
+                                    ₦${formatProductPrice(
+                                        product.price
+                                    )}
+
+                                </span>
+
+                            </div>
+
+
+                            <button
+                                type="button"
+                                class="order-btn"
+                                data-id="${product.id}"
+
+                                data-product="${escapeProductHTML(
+                                    product.name
+                                )}"
+
+                                data-price="₦${formatProductPrice(
+                                    product.price
+                                )}"
+
+                                ${
+                                    isOutOfStock
+                                        ? "disabled"
+                                        : ""
+                                }
+                            >
+
+                                ${
+                                    isOutOfStock
+                                        ? "Out of Stock"
+                                        : "Order Now"
+                                }
+
+                            </button>
+
+                        </div>
 
                     </div>
 
@@ -1753,7 +1817,6 @@ async function loadAccessories() {
         }
     }
 }
-
 
 /* =====================================================
    ORDER MODAL ELEMENTS
@@ -2567,11 +2630,11 @@ if (
             );
 
             mobileMenuBtn.setAttribute(
-               "aria-label",
-               isOpen
-                   ? "Close navigation menu"
-                   : "Open navigation menu"
-   );
+                "aria-label",
+                isOpen
+                    ? "Close navigation menu"
+                    : "Open navigation menu"
+            );
 
         }
     );
