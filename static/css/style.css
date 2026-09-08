@@ -4248,3 +4248,154 @@ body.modal-open {
 .order-btn {
     margin-bottom: 0;
 }
+
+
+/* =====================================================
+   PREMIUM ORDER MODAL — COMPACT FIX
+===================================================== */
+
+.order-modal {
+    padding: 20px;
+}
+
+.order-modal-dialog {
+    width: min(650px, calc(100% - 30px));
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+
+    padding: 32px;
+
+    border-radius: 24px;
+
+    scrollbar-width: thin;
+}
+
+
+/* HEADER */
+
+.order-modal-header {
+    margin-bottom: 24px;
+}
+
+.order-modal-header h2 {
+    margin-top: 6px;
+    font-size: 34px;
+    line-height: 1.15;
+}
+
+
+/* PRODUCT SUMMARY */
+
+.order-product-summary {
+    padding: 20px 22px;
+    margin-bottom: 24px;
+}
+
+.order-product-summary h3 {
+    margin: 5px 0;
+}
+
+
+/* FORM */
+
+.order-form-group {
+    margin-bottom: 18px;
+}
+
+.order-form-group label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.order-form-group input {
+    width: 100%;
+    height: 54px;
+    padding: 0 18px;
+}
+
+
+/* TOTAL */
+
+.order-total-box {
+    margin-top: 8px;
+    padding: 18px 20px;
+}
+
+.order-total-box strong {
+    font-size: 25px;
+}
+
+
+/* SUBMIT BUTTON */
+
+.order-submit-btn {
+    width: 100%;
+    min-height: 54px;
+
+    margin-top: 18px;
+
+    border: none;
+    border-radius: 11px;
+
+    background: #1677ff;
+    color: #ffffff;
+
+    font-size: 16px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+
+/* CLOSE BUTTON */
+
+.order-modal-close {
+    top: 18px;
+    right: 18px;
+}
+
+
+/* =====================================================
+   MOBILE ORDER MODAL
+===================================================== */
+
+@media (max-width: 600px) {
+
+    .order-modal {
+        padding: 10px;
+    }
+
+    .order-modal-dialog {
+        width: 100%;
+        max-height: calc(100vh - 20px);
+
+        padding: 24px 18px;
+
+        border-radius: 18px;
+    }
+
+    .order-modal-header h2 {
+        font-size: 27px;
+        padding-right: 40px;
+    }
+
+    .order-product-summary {
+        padding: 17px;
+    }
+
+    .order-form-group input {
+        height: 50px;
+    }
+
+    .order-total-box {
+        padding: 16px;
+    }
+
+    .order-total-box strong {
+        font-size: 21px;
+    }
+
+    .order-submit-btn {
+        min-height: 52px;
+    }
+}
