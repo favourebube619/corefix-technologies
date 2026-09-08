@@ -1601,33 +1601,28 @@ async function loadAccessories() {
 
 
                 if (
-                    product.image &&
-                    product.image.trim() !== ""
-                ) {
+    product.image &&
+    product.image.trim() !== ""
+) {
+    const imageUrl =
+        product.image.startsWith("http://") ||
+        product.image.startsWith("https://")
+            ? product.image
+            : `/static/assets/products/${encodeURIComponent(
+                product.image
+            )}`;
 
-                    const imageFilename =
-                        encodeURIComponent(
-                            product.image.trim()
-                        );
-
-
-                    productVisual = `
-
-                        <div class="product-image-wrapper">
-
-                            <img
-                                src="/static/assets/products/${imageFilename}"
-                                alt="${escapeProductHTML(
-                                    product.name
-                                )}"
-                                class="product-image"
-                                loading="lazy"
-                            >
-
-                        </div>
-
-                    `;
-                }
+    productVisual = `
+        <div class="product-image-wrapper">
+            <img
+                src="${escapeProductHTML(imageUrl)}"
+                alt="${escapeProductHTML(product.name)}"
+                class="product-image"
+                loading="lazy"
+            >
+        </div>
+    `;
+}
 
 
                 /* =====================================
