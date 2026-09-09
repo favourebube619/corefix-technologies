@@ -4471,3 +4471,53 @@ body.modal-open {
         right: 12px;
     }
 }
+
+
+/* =====================================================
+   CONTACT ACTIONS
+===================================================== */
+
+.contact-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-top: 22px;
+    padding: 12px 20px;
+
+    background: #1677ff;
+    color: #ffffff;
+
+    border-radius: 9px;
+
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease;
+}
+
+.contact-action-btn:hover {
+    transform: translateY(-2px);
+    background: #0d66e5;
+}
+
+.contact-info-highlight {
+    margin-top: 22px;
+
+    color: #ffffff;
+    font-weight: 700;
+    line-height: 1.7;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 600px) {
+
+    .contact-action-btn {
+        width: 100%;
+    }
+}
