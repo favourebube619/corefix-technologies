@@ -4600,3 +4600,48 @@ body.modal-open {
         font-size: 24px;
     }
 }
+
+
+/* =====================================================
+   ACCESSORIES CARD — DESKTOP BUTTON FIX
+===================================================== */
+
+.product-card {
+    overflow: hidden;
+}
+
+.product-card-content {
+    padding: 28px;
+}
+
+.product-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.product-price-wrap {
+    min-width: 0;
+    flex: 1 1 150px;
+}
+
+.order-btn {
+    flex: 0 0 auto;
+    min-width: 120px;
+    white-space: nowrap;
+}
+
+
+/* Small desktop / tablet */
+@media (max-width: 900px) {
+
+    .product-bottom {
+        align-items: stretch;
+    }
+
+    .order-btn {
+        width: 100%;
+    }
+}
