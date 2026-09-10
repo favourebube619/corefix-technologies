@@ -10,11 +10,13 @@ import hmac
 import os
 import secrets
 import smtplib
+import json
 from email.message import EmailMessage
 from datetime import datetime, timedelta
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask import send_from_directory
+from pywebpush import webpush, WebPushException
 
 from dotenv import load_dotenv
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -35,6 +37,9 @@ from database import (
     get_all_repairs,
     get_repairs_by_user_id,
     update_repair_status,
+    save_push_subscription,
+    get_push_subscriptions_by_user_id,
+    delete_push_subscription,
 
     # Products
     add_product,
@@ -484,6 +489,88 @@ def service_worker():
     return response
 
 
+@app.route("/push/subscribe", methods=["POST"])
+@customer_required
+def push_subscribe():
+    data = request.get_json(silent=True) or {}
+
+    endpoint = data.get("endpoint")
+    keys = data.get("keys") or {}
+
+    p256dh = keys.get("p256dh")
+    auth = keys.get("auth")
+
+    if not endpoint or not p256dh or not auth:
+        return jsonify({
+            "success": False,
+            "message": "Invalid push subscription."
+        }), 400
+
+    save_push_subscription(
+        session["user_id"],
+        endpoint,
+        p256dh,
+        auth,
+    )
+
+    return jsonify({
+        "success": True,
+        "message": "Push notifications enabled."
+    })
+
+@app.route("/push/test", methods=["POST"])
+@customer_required
+def push_test():
+
+    subscriptions = get_push_subscriptions_by_user_id(
+        session["user_id"]
+    )
+
+    if not subscriptions:
+        return jsonify({
+            "success": False,
+            "message": "No push subscription found."
+        }), 404
+
+    payload = {
+        "title": "CoreFix Technologies",
+        "body": "Push notifications are working successfully.",
+        "icon": "/static/assets/corefix-icon-192.png",
+        "badge": "/static/assets/corefix-icon-192.png",
+        "url": "/dashboard"
+    }
+
+    sent = 0
+
+    for subscription in subscriptions:
+
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": subscription["endpoint"],
+                    "keys": {
+                        "p256dh": subscription["p256dh"],
+                        "auth": subscription["auth"],
+                    },
+                },
+                data=json.dumps(payload),
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims={
+                    "sub": VAPID_CLAIMS_EMAIL
+                },
+            )
+
+            sent += 1
+
+        except WebPushException as error:
+            print("Push notification error:", error)
+
+    return jsonify({
+        "success": True,
+        "sent": sent
+    })
+
+
 # =====================================================
 # CUSTOMER DASHBOARD
 # =====================================================
@@ -559,12 +646,13 @@ def customer_dashboard():
 
 
     return render_template(
-        "dashboard.html",
-        user=user,
-        repairs=repairs,
-        orders=orders,
-        notifications=notifications,
-    )
+    "dashboard.html",
+    user=user,
+    repairs=repairs,
+    orders=orders,
+    notifications=notifications,
+    VAPID_PUBLIC_KEY=VAPID_PUBLIC_KEY,
+)
 
 
     # =================================================

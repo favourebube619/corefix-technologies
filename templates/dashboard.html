@@ -34,6 +34,113 @@
     href="{{ url_for('static', filename='assets/corefix-icon-192.png') }}"
 >
 
+
+    <style>
+        .customer-push-card {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+            margin: 28px 0;
+            padding: 24px 28px;
+            border: 1px solid rgba(78, 151, 255, 0.22);
+            border-radius: 20px;
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(15, 22, 34, 0.98),
+                    rgba(12, 29, 53, 0.98)
+                );
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+        }
+
+        .customer-push-icon {
+            width: 58px;
+            height: 58px;
+            flex: 0 0 58px;
+            display: grid;
+            place-items: center;
+            border-radius: 16px;
+            background: rgba(47, 133, 255, 0.14);
+            color: #3d91ff;
+            font-size: 23px;
+        }
+
+        .customer-push-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .customer-push-label {
+            margin: 0 0 6px;
+            color: #3d91ff;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 2px;
+        }
+
+        .customer-push-content h2 {
+            margin: 0 0 6px;
+            color: #ffffff;
+            font-size: 21px;
+        }
+
+        .customer-push-content > p:last-child {
+            margin: 0;
+            color: #9da9b9;
+            line-height: 1.6;
+        }
+
+        .notification-btn {
+            min-height: 48px;
+            padding: 0 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border: 1px solid rgba(61, 145, 255, 0.45);
+            border-radius: 12px;
+            background: #2f86ff;
+            color: #ffffff;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: transform .2s ease, opacity .2s ease, background .2s ease;
+        }
+
+        .notification-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .notification-btn:disabled {
+            cursor: default;
+            opacity: .72;
+            transform: none;
+        }
+
+        .notification-btn.is-enabled {
+            background: rgba(32, 180, 104, 0.16);
+            border-color: rgba(32, 180, 104, 0.42);
+            color: #5fe09b;
+        }
+
+        @media (max-width: 760px) {
+            .customer-push-card {
+                align-items: flex-start;
+                flex-wrap: wrap;
+                padding: 20px;
+            }
+
+            .customer-push-content {
+                flex-basis: calc(100% - 80px);
+            }
+
+            .notification-btn {
+                width: 100%;
+            }
+        }
+    </style>
+
 </head>
 
 
@@ -99,6 +206,35 @@
             <div class="customer-avatar">
                 <i class="fa-solid fa-user"></i>
             </div>
+
+        </section>
+
+
+        <!-- PUSH NOTIFICATIONS -->
+
+        <section class="customer-push-card">
+
+            <div class="customer-push-icon">
+                <i class="fa-solid fa-bell"></i>
+            </div>
+
+            <div class="customer-push-content">
+                <p class="customer-push-label">PUSH NOTIFICATIONS</p>
+                <h2>Stay updated with CoreFix</h2>
+                <p>
+                    Get alerts when your repair or order status changes,
+                    including when your device or order is ready.
+                </p>
+            </div>
+
+            <button
+                id="enableNotificationsBtn"
+                type="button"
+                class="notification-btn"
+            >
+                <i class="fa-solid fa-bell"></i>
+                <span>Enable Notifications</span>
+            </button>
 
         </section>
 
@@ -667,6 +803,159 @@
             );
         });
     }
+</script>
+
+<script>
+    const VAPID_PUBLIC_KEY = "{{ VAPID_PUBLIC_KEY }}";
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = "=".repeat((4 - base64String.length % 4) % 4);
+
+        const base64 = (base64String + padding)
+            .replace(/-/g, "+")
+            .replace(/_/g, "/");
+
+        const rawData = window.atob(base64);
+
+        return Uint8Array.from(
+            [...rawData].map(char => char.charCodeAt(0))
+        );
+    }
+
+    function setNotificationButtonState(enabled) {
+        const button = document.getElementById("enableNotificationsBtn");
+
+        if (!button) {
+            return;
+        }
+
+        if (enabled) {
+            button.classList.add("is-enabled");
+            button.innerHTML =
+                '<i class="fa-solid fa-circle-check"></i>' +
+                '<span>Notifications Enabled</span>';
+            button.disabled = true;
+        }
+    }
+
+    async function enablePushNotifications() {
+        const button = document.getElementById("enableNotificationsBtn");
+
+        try {
+            if (!("Notification" in window)) {
+                alert("This browser does not support notifications.");
+                return;
+            }
+
+            if (!("serviceWorker" in navigator)) {
+                alert("This browser does not support service workers.");
+                return;
+            }
+
+            if (!("PushManager" in window)) {
+                alert("Push notifications are not supported on this browser.");
+                return;
+            }
+
+            if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === "None") {
+                alert("CoreFix notification configuration is not ready yet.");
+                return;
+            }
+
+            if (button) {
+                button.disabled = true;
+                button.innerHTML =
+                    '<i class="fa-solid fa-spinner fa-spin"></i>' +
+                    '<span>Enabling...</span>';
+            }
+
+            const permission = await Notification.requestPermission();
+
+            if (permission !== "granted") {
+                alert("Notification permission was not granted.");
+
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML =
+                        '<i class="fa-solid fa-bell"></i>' +
+                        '<span>Enable Notifications</span>';
+                }
+
+                return;
+            }
+
+            const registration = await navigator.serviceWorker.ready;
+
+            let subscription =
+                await registration.pushManager.getSubscription();
+
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey:
+                        urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+            }
+
+            const response = await fetch("/push/subscribe", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(subscription.toJSON())
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(
+                    result.message || "Could not save push subscription."
+                );
+            }
+
+            setNotificationButtonState(true);
+
+            alert("CoreFix notifications enabled.");
+
+        } catch (error) {
+            console.error("Push subscription error:", error);
+
+            if (button) {
+                button.disabled = false;
+                button.innerHTML =
+                    '<i class="fa-solid fa-bell"></i>' +
+                    '<span>Enable Notifications</span>';
+            }
+
+            alert("Could not enable notifications.");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        const button = document.getElementById("enableNotificationsBtn");
+
+        if (button) {
+            button.addEventListener("click", enablePushNotifications);
+        }
+
+        try {
+            if (
+                "serviceWorker" in navigator &&
+                "PushManager" in window &&
+                Notification.permission === "granted"
+            ) {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription =
+                    await registration.pushManager.getSubscription();
+
+                if (subscription) {
+                    setNotificationButtonState(true);
+                }
+            }
+        } catch (error) {
+            console.error("Notification status check error:", error);
+        }
+    });
 </script>
 
 </body>

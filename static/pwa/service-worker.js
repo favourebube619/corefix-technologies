@@ -80,3 +80,71 @@ self.addEventListener("fetch", event => {
             })
     );
 });
+
+
+// =====================================================
+// PUSH NOTIFICATIONS
+// =====================================================
+
+self.addEventListener("push", event => {
+
+    let data = {
+        title: "CoreFix Technologies",
+        body: "You have a new update.",
+        icon: "/static/assets/corefix-icon-192.png",
+        badge: "/static/assets/corefix-icon-192.png",
+        url: "/dashboard"
+    };
+
+    if (event.data) {
+        try {
+            data = event.data.json();
+        } catch (error) {
+            data.body = event.data.text();
+        }
+    }
+
+    const options = {
+        body: data.body,
+        icon: data.icon || "/static/assets/corefix-icon-192.png",
+        badge: data.badge || "/static/assets/corefix-icon-192.png",
+        data: {
+            url: data.url || "/dashboard"
+        }
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(
+            data.title || "CoreFix Technologies",
+            options
+        )
+    );
+});
+
+
+self.addEventListener("notificationclick", event => {
+
+    event.notification.close();
+
+    const targetUrl =
+        event.notification.data?.url || "/dashboard";
+
+    event.waitUntil(
+        clients.matchAll({
+            type: "window",
+            includeUncontrolled: true
+        }).then(windowClients => {
+
+            for (const client of windowClients) {
+                if ("focus" in client) {
+                    client.navigate(targetUrl);
+                    return client.focus();
+                }
+            }
+
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
+    );
+});

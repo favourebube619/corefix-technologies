@@ -172,6 +172,8 @@ def create_database():
             )
 
 
+
+
         # ==================================
         # PRODUCTS TABLE
         # ==================================
@@ -488,6 +490,59 @@ def create_database():
                 )
 
 
+
+        # ==================================
+        # PUSH SUBSCRIPTIONS TABLE
+        # ==================================
+
+        if USE_POSTGRES:
+
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS push_subscriptions (
+
+                    id SERIAL PRIMARY KEY,
+
+                    user_id INTEGER NOT NULL,
+
+                    endpoint TEXT UNIQUE NOT NULL,
+
+                    p256dh TEXT NOT NULL,
+
+                    auth TEXT NOT NULL,
+
+                    created_at TIMESTAMP
+                        DEFAULT CURRENT_TIMESTAMP
+
+                )
+                """
+            )
+
+        else:
+
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS push_subscriptions (
+
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                    user_id INTEGER NOT NULL,
+
+                    endpoint TEXT UNIQUE NOT NULL,
+
+                    p256dh TEXT NOT NULL,
+
+                    auth TEXT NOT NULL,
+
+                    created_at TIMESTAMP
+                        DEFAULT CURRENT_TIMESTAMP
+
+                )
+                """
+            )
+
         # ==================================
         # INDEXES
         # ==================================
@@ -546,17 +601,136 @@ def create_database():
             """
         )
 
+        # Save all database changes
+        connection.commit()
+
+    finally:
+        connection.close()
+
+# =====================================================
+# PUSH NOTIFICATION SUBSCRIPTIONS
+# =====================================================
+
+def save_push_subscription(user_id, endpoint, p256dh, auth):
+
+    connection = get_connection()
+
+    try:
+
+        if USE_POSTGRES:
+
+            execute_query(
+                connection,
+                """
+                INSERT INTO push_subscriptions (
+                    user_id,
+                    endpoint,
+                    p256dh,
+                    auth
+                )
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (endpoint)
+                DO UPDATE SET
+                    user_id = EXCLUDED.user_id,
+                    p256dh = EXCLUDED.p256dh,
+                    auth = EXCLUDED.auth
+                """,
+                (
+                    user_id,
+                    endpoint,
+                    p256dh,
+                    auth,
+                ),
+            )
+
+        else:
+
+            execute_query(
+                connection,
+                """
+                INSERT INTO push_subscriptions (
+                    user_id,
+                    endpoint,
+                    p256dh,
+                    auth
+                )
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(endpoint)
+                DO UPDATE SET
+                    user_id = excluded.user_id,
+                    p256dh = excluded.p256dh,
+                    auth = excluded.auth
+                """,
+                (
+                    user_id,
+                    endpoint,
+                    p256dh,
+                    auth,
+                ),
+            )
+
         connection.commit()
 
     except Exception:
-
         connection.rollback()
         raise
 
     finally:
-
         connection.close()
 
+
+def get_push_subscriptions_by_user_id(user_id):
+
+    connection = get_connection()
+
+    try:
+
+        cursor = execute_query(
+            connection,
+            """
+            SELECT
+                id,
+                user_id,
+                endpoint,
+                p256dh,
+                auth,
+                created_at
+            FROM push_subscriptions
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            """,
+            (user_id,),
+        )
+
+        return cursor.fetchall()
+
+    finally:
+        connection.close()
+
+
+def delete_push_subscription(endpoint):
+
+    connection = get_connection()
+
+    try:
+
+        execute_query(
+            connection,
+            """
+            DELETE FROM push_subscriptions
+            WHERE endpoint = ?
+            """,
+            (endpoint,),
+        )
+
+        connection.commit()
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
 
 # ==========================================
 # ADD USER

@@ -46,3 +46,5 @@ corefix.db
 # ==========================================
 *.tmp
 *.temp
+
+private_key.pem
