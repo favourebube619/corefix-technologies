@@ -91,13 +91,43 @@ if CLOUDINARY_CONFIGURED:
     )
 
 
-    # =====================================================
+# =====================================================
 # WEB PUSH / VAPID CONFIGURATION
 # =====================================================
 
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY")
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY")
+VAPID_PRIVATE_KEY_PATH = os.getenv(
+    "VAPID_PRIVATE_KEY_PATH",
+    "private_key.pem"
+)
 VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL")
+
+
+# Render stores the private key as an environment variable.
+# pywebpush works reliably when given a PEM file path.
+if VAPID_PRIVATE_KEY:
+
+    import tempfile
+
+    vapid_key_text = VAPID_PRIVATE_KEY.replace("\\n", "\n")
+
+    VAPID_PRIVATE_KEY_FILE = os.path.join(
+        tempfile.gettempdir(),
+        "corefix_vapid_private.pem"
+    )
+
+    with open(
+        VAPID_PRIVATE_KEY_FILE,
+        "w",
+        encoding="utf-8"
+    ) as key_file:
+        key_file.write(vapid_key_text)
+
+else:
+
+    # Local development uses private_key.pem
+    VAPID_PRIVATE_KEY_FILE = VAPID_PRIVATE_KEY_PATH
 
 
 # =====================================================
@@ -563,7 +593,7 @@ def push_test():
                     },
                 },
                 data=json.dumps(payload),
-                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_private_key=VAPID_PRIVATE_KEY_FILE,
                 vapid_claims={
                     "sub": VAPID_CLAIMS_EMAIL
                 },
