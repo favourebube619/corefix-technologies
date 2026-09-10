@@ -2203,32 +2203,12 @@
 
 <script>
     if ("serviceWorker" in navigator) {
-
         window.addEventListener("load", () => {
-
-            navigator.serviceWorker
-                .register(
-                    "{{ url_for('static', filename='pwa/service-worker.js') }}"
-                )
-                .then(registration => {
-
-                    console.log(
-                        "CoreFix service worker registered:",
-                        registration.scope
-                    );
-
-                })
-                .catch(error => {
-
-                    console.error(
-                        "Service worker registration failed:",
-                        error
-                    );
-
-                });
-
+            navigator.serviceWorker.register(
+                "/service-worker.js",
+                { scope: "/" }
+            );
         });
-
     }
 </script>
 

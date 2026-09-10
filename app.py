@@ -14,6 +14,7 @@ from email.message import EmailMessage
 from datetime import datetime, timedelta
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from flask import send_from_directory
 
 from dotenv import load_dotenv
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -468,6 +469,19 @@ def login():
 @app.route("/offline")
 def offline():
     return render_template("offline.html")
+
+
+@app.route("/service-worker.js")
+def service_worker():
+    response = send_from_directory(
+        "static/pwa",
+        "service-worker.js"
+    )
+
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+
+    return response
 
 
 # =====================================================
