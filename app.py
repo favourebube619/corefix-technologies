@@ -9,10 +9,14 @@ import cloudinary.uploader
 import hmac
 import os
 import secrets
+import smtplib
+from email.message import EmailMessage
 from datetime import datetime, timedelta
 from functools import wraps
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 from dotenv import load_dotenv
+from werkzeug.security import check_password_hash, generate_password_hash
 from flask import (
     Flask,
     jsonify,
@@ -28,6 +32,7 @@ from database import (
     add_repair,
     get_repair,
     get_all_repairs,
+    get_repairs_by_user_id,
     update_repair_status,
 
     # Products
@@ -41,8 +46,15 @@ from database import (
     add_order,
     get_order,
     get_all_orders,
+    get_orders_by_user_id,
     update_order_status,
     delete_order,
+
+    # Users
+    add_user,
+    get_user_by_email,
+    get_user_by_id,
+    update_user_password,
 )
 
 
@@ -78,6 +90,22 @@ if CLOUDINARY_CONFIGURED:
 # =====================================================
 
 app = Flask(__name__)
+
+app.secret_key = os.getenv(
+    "SECRET_KEY",
+    "corefix-local-development-secret-key"
+)
+
+
+# =====================================================
+# PASSWORD RESET CONFIGURATION
+# =====================================================
+
+password_reset_serializer = URLSafeTimedSerializer(
+    app.secret_key
+)
+
+PASSWORD_RESET_MAX_AGE = 1800  # 30 minutes
 
 
 # =====================================================
@@ -149,6 +177,17 @@ def admin_required(function):
     def wrapper(*args, **kwargs):
         if not session.get("admin_logged_in"):
             return json_error("Unauthorized.", 401)
+
+        return function(*args, **kwargs)
+
+    return wrapper
+
+
+def customer_required(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("login"))
 
         return function(*args, **kwargs)
 
@@ -243,13 +282,668 @@ def masked_phone(phone):
     return "*" * (len(phone) - 4) + phone[-4:]
 
 
+def send_reset_email(recipient_email, reset_url):
+
+    mail_server = os.getenv("MAIL_SERVER", "").strip()
+    mail_port = int(os.getenv("MAIL_PORT", "587"))
+    mail_username = os.getenv("MAIL_USERNAME", "").strip()
+    mail_password = os.getenv("MAIL_PASSWORD", "").strip()
+    mail_from = os.getenv("MAIL_FROM", mail_username).strip()
+
+    if not all([
+        mail_server,
+        mail_username,
+        mail_password,
+        mail_from
+    ]):
+        raise RuntimeError(
+            "Email settings are not fully configured."
+        )
+
+    message = EmailMessage()
+
+    message["Subject"] = "Reset your CoreFix password"
+    message["From"] = mail_from
+    message["To"] = recipient_email
+
+    message.set_content(
+        f"""
+Hello,
+
+A password reset was requested for your CoreFix account.
+
+Use the link below to create a new password:
+
+{reset_url}
+
+This link expires in 30 minutes.
+
+If you did not request this password reset, you can ignore this email.
+
+CoreFix Technologies
+"""
+    )
+
+    with smtplib.SMTP(
+        mail_server,
+        mail_port
+    ) as server:
+
+        server.starttls()
+
+        server.login(
+            mail_username,
+            mail_password
+        )
+
+        server.send_message(message)
+
+
 # =====================================================
 # HOME PAGE
 # =====================================================
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    user = None
+
+    if session.get("user_id"):
+        user = get_user_by_id(session["user_id"])
+
+        if not user:
+            session.clear()
+
+    return render_template(
+        "index.html",
+        user=user,
+    )
+
+
+# =====================================================
+# CUSTOMER AUTHENTICATION - SIGN UP
+# =====================================================
+
+@app.route(
+    "/signup",
+    methods=["GET", "POST"],
+)
+def signup():
+    if session.get("user_id"):
+        return redirect(url_for("customer_dashboard"))
+
+    error = None
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        phone = request.form.get("phone", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not name:
+            error = "Please enter your full name."
+        elif not email or "@" not in email:
+            error = "Please enter a valid email address."
+        elif not phone:
+            error = "Please enter your phone number."
+        elif len(password) < 8:
+            error = "Password must be at least 8 characters long."
+        elif password != confirm_password:
+            error = "Passwords do not match."
+        elif get_user_by_email(email):
+            error = "An account with this email already exists."
+        else:
+            try:
+                password_hash = generate_password_hash(password)
+
+                add_user(
+                    name,
+                    email,
+                    phone,
+                    password_hash,
+                )
+
+                user = get_user_by_email(email)
+
+                if not user:
+                    error = "Account was created, but login could not be completed."
+                else:
+                    session.clear()
+                    session["user_id"] = user["id"]
+                    session["user_name"] = user["name"]
+                    session.permanent = True
+
+                    return redirect(url_for("customer_dashboard"))
+
+            except Exception as signup_error:
+                print("Signup error:", signup_error)
+                error = "Unable to create your account right now."
+
+    return render_template(
+        "signup.html",
+        error=error,
+    )
+
+
+# =====================================================
+# CUSTOMER AUTHENTICATION - LOGIN
+# =====================================================
+
+@app.route(
+    "/login",
+    methods=["GET", "POST"],
+)
+def login():
+    if session.get("user_id"):
+        return redirect(url_for("customer_dashboard"))
+
+    error = None
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        user = get_user_by_email(email) if email else None
+
+        if not user or not check_password_hash(user["password_hash"], password):
+            error = "Invalid email or password."
+        else:
+            session.clear()
+            session["user_id"] = user["id"]
+            session["user_name"] = user["name"]
+            session.permanent = True
+
+            return redirect(url_for("customer_dashboard"))
+
+    return render_template(
+        "login.html",
+        error=error,
+    )
+
+
+# =====================================================
+# CUSTOMER DASHBOARD
+# =====================================================
+
+@app.route("/dashboard")
+@customer_required
+def customer_dashboard():
+
+    user = get_user_by_id(
+        session["user_id"]
+    )
+
+    if not user:
+        session.clear()
+        return redirect(url_for("login"))
+
+    repairs = get_repairs_by_user_id(
+        user["id"]
+    )
+
+    orders = get_orders_by_user_id(
+        user["id"]
+    )
+
+    notifications = []
+
+
+    for repair in repairs:
+
+        if repair["status"] == "Ready for Collection":
+
+            notifications.append({
+                "type": "repair",
+                "icon": "fa-screwdriver-wrench",
+                "title": "Repair Ready",
+                "message": (
+                    f'{repair["brand"]} '
+                    f'{repair["model"]} '
+                    "is ready for collection."
+                ),
+                "reference": repair["repair_id"],
+            })
+
+
+    for order in orders:
+
+        if order["status"] == "Ready":
+
+            notifications.append({
+                "type": "order",
+                "icon": "fa-box",
+                "title": "Order Ready",
+                "message": (
+                    f'{order["product_name"]} '
+                    "is ready."
+                ),
+                "reference": order["order_id"],
+            })
+
+        elif order["status"] == "Completed":
+
+            notifications.append({
+                "type": "completed",
+                "icon": "fa-circle-check",
+                "title": "Order Completed",
+                "message": (
+                    f'Your order for '
+                    f'{order["product_name"]} '
+                    "has been completed."
+                ),
+                "reference": order["order_id"],
+            })
+
+
+    return render_template(
+        "dashboard.html",
+        user=user,
+        repairs=repairs,
+        orders=orders,
+        notifications=notifications,
+    )
+
+
+    # =================================================
+# CUSTOMER NOTIFICATIONS
+# =================================================
+
+notifications = []
+
+
+
+
+
+# =====================================================
+# EDIT CUSTOMER PROFILE
+# =====================================================
+
+@app.route(
+    "/profile/edit",
+    methods=["GET", "POST"],
+)
+@customer_required
+def edit_profile():
+
+    user = get_user_by_id(
+        session["user_id"]
+    )
+
+    if not user:
+        session.clear()
+        return redirect(url_for("login"))
+
+    error = None
+    success = None
+
+    if request.method == "POST":
+
+        name = request.form.get(
+            "name",
+            ""
+        ).strip()
+
+        email = request.form.get(
+            "email",
+            ""
+        ).strip().lower()
+
+        phone = request.form.get(
+            "phone",
+            ""
+        ).strip()
+
+        if not name:
+
+            error = "Please enter your full name."
+
+        elif not email or "@" not in email:
+
+            error = "Please enter a valid email address."
+
+        elif not phone:
+
+            error = "Please enter your phone number."
+
+        else:
+
+            existing_user = get_user_by_email(
+                email
+            )
+
+            if (
+                existing_user
+                and existing_user["id"] != user["id"]
+            ):
+
+                error = (
+                    "Another account is already "
+                    "using this email address."
+                )
+
+            else:
+
+                try:
+
+                    update_user(
+                        user["id"],
+                        name,
+                        email,
+                        phone,
+                    )
+
+                    session["user_name"] = name
+
+                    user = get_user_by_id(
+                        session["user_id"]
+                    )
+
+                    success = (
+                        "Your profile has been "
+                        "updated successfully."
+                    )
+
+                except Exception as profile_error:
+
+                    print(
+                        "Profile update error:",
+                        profile_error
+                    )
+
+                    error = (
+                        "Unable to update your "
+                        "profile right now."
+                    )
+
+    return render_template(
+        "edit_profile.html",
+        user=user,
+        error=error,
+        success=success,
+    )
+
+
+# =====================================================
+# CHANGE CUSTOMER PASSWORD
+# =====================================================
+
+@app.route(
+    "/profile/change-password",
+    methods=["GET", "POST"],
+)
+@customer_required
+def change_password():
+
+    user = get_user_by_id(
+        session["user_id"]
+    )
+
+    if not user:
+        session.clear()
+        return redirect(url_for("login"))
+
+    error = None
+    success = None
+
+    if request.method == "POST":
+
+        current_password = request.form.get(
+            "current_password",
+            ""
+        )
+
+        new_password = request.form.get(
+            "new_password",
+            ""
+        )
+
+        confirm_password = request.form.get(
+            "confirm_password",
+            ""
+        )
+
+        if not check_password_hash(
+            user["password_hash"],
+            current_password
+        ):
+
+            error = "Your current password is incorrect."
+
+        elif len(new_password) < 8:
+
+            error = (
+                "Your new password must be "
+                "at least 8 characters."
+            )
+
+        elif new_password != confirm_password:
+
+            error = "The new passwords do not match."
+
+        elif check_password_hash(
+            user["password_hash"],
+            new_password
+        ):
+
+            error = (
+                "Your new password must be "
+                "different from your current password."
+            )
+
+        else:
+
+            try:
+
+                new_password_hash = generate_password_hash(
+                    new_password
+                )
+
+                update_user_password(
+                    user["id"],
+                    new_password_hash
+                )
+
+                success = (
+                    "Your password has been "
+                    "changed successfully."
+                )
+
+            except Exception as password_error:
+
+                print(
+                    "Password update error:",
+                    password_error
+                )
+
+                error = (
+                    "Unable to change your "
+                    "password right now."
+                )
+
+    return render_template(
+        "change_password.html",
+        user=user,
+        error=error,
+        success=success,
+    )
+
+
+# =====================================================
+# FORGOT PASSWORD
+# =====================================================
+
+@app.route(
+    "/forgot-password",
+    methods=["GET", "POST"],
+)
+def forgot_password():
+
+    message = None
+
+    if request.method == "POST":
+
+        email = request.form.get(
+            "email",
+            ""
+        ).strip().lower()
+
+        user = get_user_by_email(email)
+
+        # Always show the same response.
+        # This prevents people from checking
+        # which email addresses are registered.
+        message = (
+            "If an account exists with that email, "
+            "a password reset link has been created."
+        )
+
+        if user:
+
+            token = password_reset_serializer.dumps(
+                user["email"],
+                salt="password-reset"
+            )
+
+            reset_url = url_for(
+                "reset_password",
+                token=token,
+                _external=True
+            )
+
+            try:
+
+                send_reset_email(
+                    user["email"],
+                    reset_url
+                )
+
+            except Exception as email_error:
+
+                print(
+                    "Password reset email error:",
+                    email_error
+                )
+
+                # Local development fallback
+                print("\n" + "=" * 60)
+                print("COREFIX PASSWORD RESET LINK")
+                print(reset_url)
+                print("=" * 60 + "\n")
+
+
+    return render_template(
+        "forgot_password.html",
+        message=message,
+    )
+
+
+# =====================================================
+# RESET PASSWORD
+# =====================================================
+
+@app.route(
+    "/reset-password/<token>",
+    methods=["GET", "POST"],
+)
+def reset_password(token):
+
+    try:
+
+        email = password_reset_serializer.loads(
+            token,
+            salt="password-reset",
+            max_age=PASSWORD_RESET_MAX_AGE
+        )
+
+    except SignatureExpired:
+
+        return render_template(
+            "reset_password.html",
+            invalid_token=True,
+            error=(
+                "This password reset link has expired. "
+                "Please request a new one."
+            ),
+        )
+
+    except BadSignature:
+
+        return render_template(
+            "reset_password.html",
+            invalid_token=True,
+            error=(
+                "This password reset link is invalid."
+            ),
+        )
+
+    user = get_user_by_email(email)
+
+    if not user:
+
+        return render_template(
+            "reset_password.html",
+            invalid_token=True,
+            error="This password reset link is invalid.",
+        )
+
+    error = None
+
+    if request.method == "POST":
+
+        new_password = request.form.get(
+            "new_password",
+            ""
+        )
+
+        confirm_password = request.form.get(
+            "confirm_password",
+            ""
+        )
+
+        if len(new_password) < 8:
+
+            error = (
+                "Your password must be "
+                "at least 8 characters."
+            )
+
+        elif new_password != confirm_password:
+
+            error = "The passwords do not match."
+
+        else:
+
+            new_password_hash = generate_password_hash(
+                new_password
+            )
+
+            update_user_password(
+                user["id"],
+                new_password_hash
+            )
+
+            return redirect(
+                url_for(
+                    "login",
+                    reset="success"
+                )
+            )
+
+    return render_template(
+        "reset_password.html",
+        invalid_token=False,
+        error=error,
+    )
+
+
+# =====================================================
+# CUSTOMER LOGOUT
+# =====================================================
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("home"))
 
 
 # =====================================================
@@ -357,6 +1051,15 @@ def create_repair():
         if not contact_method:
             contact_method = "WhatsApp"
 
+        user_id = session.get("user_id")
+
+        if user_id:
+            account_user = get_user_by_id(user_id)
+
+            if account_user:
+                name = account_user["name"]
+                phone = account_user["phone"]
+
         repair_id = generate_repair_id()
 
         add_repair(
@@ -369,6 +1072,7 @@ def create_repair():
             issue,
             description,
             contact_method,
+            user_id,
         )
 
         return jsonify({
@@ -833,6 +1537,15 @@ def create_order():
         customer_name = str(data.get("customerName", "")).strip()
         phone = str(data.get("phone", "")).strip()
 
+        user_id = session.get("user_id")
+
+        if user_id:
+            account_user = get_user_by_id(user_id)
+
+            if account_user:
+                customer_name = account_user["name"]
+                phone = account_user["phone"]
+
         try:
             quantity = int(data.get("quantity", 1))
         except (TypeError, ValueError):
@@ -874,6 +1587,7 @@ def create_order():
             quantity,
             unit_price,
             total_price,
+            user_id,
         )
 
         return jsonify({
@@ -1084,8 +1798,8 @@ def page_not_found(error):
 
 if __name__ == "__main__":
     app.run(
-        host="127.0.0.1",
-        port=5000,
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", 5000)),
         debug=False,
         use_reloader=False,
     )

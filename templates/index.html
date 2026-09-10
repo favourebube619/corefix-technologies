@@ -59,6 +59,23 @@
         href="{{ url_for('static', filename='assets/favicon.png') }}"
     >
 
+    <!-- CoreFix PWA -->
+<link
+    rel="manifest"
+    href="{{ url_for('static', filename='pwa/manifest.json') }}"
+>
+
+<meta name="theme-color" content="#080b10">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CoreFix">
+
+<link
+    rel="apple-touch-icon"
+    href="{{ url_for('static', filename='assets/corefix-icon-192.png') }}"
+>
+
 </head>
 
 
@@ -140,6 +157,34 @@
             Book Repair
         </a>
 
+
+        {% if user %}
+
+            <a
+                href="{{ url_for('customer_dashboard') }}"
+                class="nav-account-btn"
+            >
+                👤 My Account
+            </a>
+
+        {% else %}
+
+            <a
+                href="{{ url_for('login') }}"
+                class="nav-login-link"
+            >
+                Login
+            </a>
+
+            <a
+                href="{{ url_for('signup') }}"
+                class="nav-account-btn"
+            >
+                Create Account
+            </a>
+
+        {% endif %}
+
     </nav>
 
 </header>
@@ -202,6 +247,17 @@
             </a>
 
         </div>
+
+
+        <button
+    id="installAppBtn"
+    class="install-app-btn"
+    type="button"
+    hidden
+>
+    <i class="fa-solid fa-mobile-screen-button"></i>
+    Install CoreFix App
+</button>
 
 
         <div class="hero-features">
@@ -2137,6 +2193,37 @@
 >
     💬
 </a>
+
+<script>
+    if ("serviceWorker" in navigator) {
+
+        window.addEventListener("load", () => {
+
+            navigator.serviceWorker
+                .register(
+                    "{{ url_for('static', filename='pwa/service-worker.js') }}"
+                )
+                .then(registration => {
+
+                    console.log(
+                        "CoreFix service worker registered:",
+                        registration.scope
+                    );
+
+                })
+                .catch(error => {
+
+                    console.error(
+                        "Service worker registration failed:",
+                        error
+                    );
+
+                });
+
+        });
+
+    }
+</script>
 
 
 </body>

@@ -2704,3 +2704,80 @@ if (
     );
 
 }
+
+
+// =====================================================
+// COREFIX PWA INSTALL
+// =====================================================
+
+let deferredInstallPrompt = null;
+
+
+// Chrome says the app can be installed
+window.addEventListener("beforeinstallprompt", event => {
+
+    event.preventDefault();
+
+    deferredInstallPrompt = event;
+
+    const installAppBtn =
+        document.getElementById("installAppBtn");
+
+    if (installAppBtn) {
+        installAppBtn.hidden = false;
+    }
+
+});
+
+
+// Wait until the HTML is ready
+document.addEventListener("DOMContentLoaded", () => {
+
+    const installAppBtn =
+        document.getElementById("installAppBtn");
+
+    if (!installAppBtn) {
+        console.log("CoreFix install button not found.");
+        return;
+    }
+
+    installAppBtn.addEventListener("click", async () => {
+
+        if (!deferredInstallPrompt) {
+            console.log("Install prompt is not available.");
+            return;
+        }
+
+        deferredInstallPrompt.prompt();
+
+        const result =
+            await deferredInstallPrompt.userChoice;
+
+        console.log(
+            "CoreFix install choice:",
+            result.outcome
+        );
+
+        deferredInstallPrompt = null;
+
+        installAppBtn.hidden = true;
+
+    });
+
+});
+
+
+window.addEventListener("appinstalled", () => {
+
+    console.log("CoreFix installed successfully.");
+
+    deferredInstallPrompt = null;
+
+    const installAppBtn =
+        document.getElementById("installAppBtn");
+
+    if (installAppBtn) {
+        installAppBtn.hidden = true;
+    }
+
+});

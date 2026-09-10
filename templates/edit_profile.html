@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Edit Profile | CoreFix Technologies
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    >
+
+    <!-- CoreFix PWA -->
+<link
+    rel="manifest"
+    href="{{ url_for('static', filename='pwa/manifest.json') }}"
+>
+
+<meta name="theme-color" content="#080b10">
+
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CoreFix">
+
+<link
+    rel="apple-touch-icon"
+    href="{{ url_for('static', filename='assets/corefix-icon-192.png') }}"
+>
+
+</head>
+
+
+
+<body class="auth-body">
+
+    <main class="auth-page">
+
+        <section class="auth-card">
+
+            <!-- BRAND -->
+
+            <div class="auth-brand">
+
+                <a
+                    href="{{ url_for('customer_dashboard') }}"
+                    class="auth-logo"
+                >
+
+                    <span class="auth-logo-icon">
+
+                        <i class="fa-solid fa-user-gear"></i>
+
+                    </span>
+
+                    <span>
+
+                        CoreFix
+
+                        <small>
+                            Customer Account
+                        </small>
+
+                    </span>
+
+                </a>
+
+            </div>
+
+
+            <!-- HEADING -->
+
+            <div class="auth-heading">
+
+                <h1>
+                    Edit Profile
+                </h1>
+
+                <p>
+                    Update your personal information.
+                    These details will be used for your
+                    future CoreFix repairs and orders.
+                </p>
+
+            </div>
+
+
+            <!-- ERROR -->
+
+            {% if error %}
+
+                <div class="auth-alert">
+
+                    <i class="fa-solid fa-circle-exclamation"></i>
+
+                    <span>
+                        {{ error }}
+                    </span>
+
+                </div>
+
+            {% endif %}
+
+
+            <!-- SUCCESS -->
+
+            {% if success %}
+
+                <div class="profile-success">
+
+                    <i class="fa-solid fa-circle-check"></i>
+
+                    <span>
+                        {{ success }}
+                    </span>
+
+                </div>
+
+            {% endif %}
+
+
+            <!-- FORM -->
+
+            <form
+                method="POST"
+                action="{{ url_for('edit_profile') }}"
+                class="auth-form"
+            >
+
+
+                <!-- NAME -->
+
+                <div class="auth-field">
+
+                    <label for="name">
+                        Full Name
+                    </label>
+
+                    <div class="auth-input-wrapper">
+
+                        <i class="fa-regular fa-user"></i>
+
+                        <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            value="{{ user['name'] }}"
+                            autocomplete="name"
+                            required
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <!-- EMAIL -->
+
+                <div class="auth-field">
+
+                    <label for="email">
+                        Email Address
+                    </label>
+
+                    <div class="auth-input-wrapper">
+
+                        <i class="fa-regular fa-envelope"></i>
+
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            value="{{ user['email'] }}"
+                            autocomplete="email"
+                            required
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <!-- PHONE -->
+
+                <div class="auth-field">
+
+                    <label for="phone">
+                        Phone Number
+                    </label>
+
+                    <div class="auth-input-wrapper">
+
+                        <i class="fa-solid fa-phone"></i>
+
+                        <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            value="{{ user['phone'] }}"
+                            autocomplete="tel"
+                            required
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <!-- SAVE -->
+
+                <button
+                    type="submit"
+                    class="auth-submit"
+                >
+
+                    <i class="fa-solid fa-floppy-disk"></i>
+
+                    Save Changes
+
+                </button>
+
+            </form>
+
+
+            <div class="auth-home-link">
+
+                <a href="{{ url_for('customer_dashboard') }}">
+
+                    <i class="fa-solid fa-arrow-left"></i>
+
+                    Back to Dashboard
+
+                </a>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker.register(
+                "{{ url_for('static', filename='pwa/service-worker.js') }}"
+            );
+        });
+    }
+</script>
+
+</body>
+
+</html>

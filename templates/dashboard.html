@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>My Dashboard | CoreFix Technologies</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    >
+
+    <!-- CoreFix PWA -->
+<link
+    rel="manifest"
+    href="{{ url_for('static', filename='pwa/manifest.json') }}"
+>
+
+<meta name="theme-color" content="#080b10">
+
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CoreFix">
+
+<link
+    rel="apple-touch-icon"
+    href="{{ url_for('static', filename='assets/corefix-icon-192.png') }}"
+>
+
+</head>
+
+
+
+<body class="customer-dashboard-body">
+
+    <header class="customer-dashboard-nav">
+
+        <a href="{{ url_for('home') }}" class="customer-dashboard-logo">
+
+            <span class="customer-dashboard-logo-icon">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+            </span>
+
+            <span>
+                <strong>CoreFix</strong>
+                <small>Technologies</small>
+            </span>
+
+        </a>
+
+        <div class="customer-nav-actions">
+
+            <a href="{{ url_for('home') }}">
+                <i class="fa-solid fa-house"></i>
+                <span>Website</span>
+            </a>
+
+            <a href="{{ url_for('logout') }}" class="customer-logout-btn">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                <span>Logout</span>
+            </a>
+
+        </div>
+
+    </header>
+
+
+    <main class="customer-dashboard-main">
+
+        <!-- WELCOME -->
+
+        <section class="customer-welcome">
+
+            <div>
+
+                <p class="customer-dashboard-label">
+                    CUSTOMER PORTAL
+                </p>
+
+                <h1>
+                    Welcome,
+                    <span>{{ user["name"] }}</span>
+                </h1>
+
+                <p class="customer-welcome-text">
+                    Manage your CoreFix account, repairs,
+                    orders and services from one place.
+                </p>
+
+            </div>
+
+            <div class="customer-avatar">
+                <i class="fa-solid fa-user"></i>
+            </div>
+
+        </section>
+
+
+        {% if notifications %}
+
+<section class="customer-notification-panel">
+
+    <div class="customer-notification-heading">
+
+        <div>
+            <p>NOTIFICATIONS</p>
+            <h2>Updates for you</h2>
+        </div>
+
+        <span class="customer-notification-count">
+            {{ notifications|length }}
+        </span>
+
+    </div>
+
+
+    <div class="customer-notification-list">
+
+        {% for notification in notifications %}
+
+            <div class="customer-notification-item">
+
+                <div class="customer-notification-icon">
+
+                    <i class="fa-solid {{ notification['icon'] }}"></i>
+
+                </div>
+
+                <div class="customer-notification-content">
+
+                    <div class="customer-notification-top">
+
+                        <strong>
+                            {{ notification["title"] }}
+                        </strong>
+
+                        <span>
+                            {{ notification["reference"] }}
+                        </span>
+
+                    </div>
+
+                    <p>
+                        {{ notification["message"] }}
+                    </p>
+
+                </div>
+
+            </div>
+
+        {% endfor %}
+
+    </div>
+
+</section>
+
+{% endif %}
+
+
+        <section class="customer-dashboard-stats">
+
+    <div class="customer-stat-card">
+
+        <div class="customer-stat-icon">
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+        </div>
+
+        <div>
+            <span>Total Repairs</span>
+            <strong>{{ repairs|length }}</strong>
+        </div>
+
+    </div>
+
+
+    <div class="customer-stat-card">
+
+        <div class="customer-stat-icon">
+            <i class="fa-solid fa-spinner"></i>
+        </div>
+
+        <div>
+            <span>Active Repairs</span>
+
+            <strong>
+                {{
+                    repairs
+                    | rejectattr("status", "equalto", "Ready for Collection")
+                    | list
+                    | length
+                }}
+            </strong>
+        </div>
+
+    </div>
+
+
+    <div class="customer-stat-card">
+
+        <div class="customer-stat-icon">
+            <i class="fa-solid fa-bag-shopping"></i>
+        </div>
+
+        <div>
+            <span>Total Orders</span>
+            <strong>{{ orders|length }}</strong>
+        </div>
+
+    </div>
+
+
+    <div class="customer-stat-card">
+
+        <div class="customer-stat-icon">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+
+        <div>
+            <span>Completed Orders</span>
+
+            <strong>
+                {{
+                    orders
+                    | selectattr("status", "equalto", "Completed")
+                    | list
+                    | length
+                }}
+            </strong>
+        </div>
+
+    </div>
+
+</section>
+
+
+        <!-- ACCOUNT -->
+
+        <section class="customer-account-card">
+
+            <div class="customer-card-heading customer-account-heading">
+
+    <div class="customer-account-title">
+
+        <div class="customer-card-icon">
+            <i class="fa-regular fa-user"></i>
+        </div>
+
+        <div>
+            <h2>My Account</h2>
+            <p>Your CoreFix account information</p>
+        </div>
+
+    </div>
+
+    <div class="customer-account-actions">
+
+    <a
+        href="{{ url_for('edit_profile') }}"
+        class="customer-edit-profile-btn"
+    >
+        <i class="fa-solid fa-pen"></i>
+        Edit Profile
+    </a>
+
+    <a
+        href="{{ url_for('change_password') }}"
+        class="customer-change-password-btn"
+    >
+        <i class="fa-solid fa-lock"></i>
+        Change Password
+    </a>
+
+</div>
+
+</div>
+
+            <div class="customer-account-grid">
+
+                <div>
+                    <span>Full Name</span>
+                    <strong>{{ user["name"] }}</strong>
+                </div>
+
+                <div>
+                    <span>Email Address</span>
+                    <strong>{{ user["email"] }}</strong>
+                </div>
+
+                <div>
+                    <span>Phone Number</span>
+                    <strong>{{ user["phone"] }}</strong>
+                </div>
+
+                <div>
+                    <span>Account Status</span>
+
+                    <strong class="customer-active-status">
+                        <i class="fa-solid fa-circle-check"></i>
+                        Active
+                    </strong>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- QUICK ACTIONS -->
+
+        <section class="customer-dashboard-section">
+
+            <div class="customer-section-heading">
+                <p>QUICK ACTIONS</p>
+                <h2>What would you like to do?</h2>
+            </div>
+
+
+            <div class="customer-action-grid">
+
+                <a
+                    href="{{ url_for('home') }}#booking"
+                    class="customer-action-card"
+                >
+
+                    <div class="customer-action-icon">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                    </div>
+
+                    <div>
+                        <h3>Book a Repair</h3>
+                        <p>
+                            Submit a new phone or laptop
+                            repair request.
+                        </p>
+                    </div>
+
+                    <i class="fa-solid fa-arrow-right customer-action-arrow"></i>
+
+                </a>
+
+
+                <a
+                    href="{{ url_for('home') }}#track"
+                    class="customer-action-card"
+                >
+
+                    <div class="customer-action-icon">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+
+                    <div>
+                        <h3>Track Repair</h3>
+                        <p>
+                            Check the current progress
+                            of your device repair.
+                        </p>
+                    </div>
+
+                    <i class="fa-solid fa-arrow-right customer-action-arrow"></i>
+
+                </a>
+
+
+                <a
+                    href="{{ url_for('home') }}#accessories"
+                    class="customer-action-card"
+                >
+
+                    <div class="customer-action-icon">
+                        <i class="fa-solid fa-bag-shopping"></i>
+                    </div>
+
+                    <div>
+                        <h3>Accessories</h3>
+                        <p>
+                            Browse available phone and
+                            computer accessories.
+                        </p>
+                    </div>
+
+                    <i class="fa-solid fa-arrow-right customer-action-arrow"></i>
+
+                </a>
+
+
+                <a
+                    href="{{ url_for('home') }}#track-order"
+                    class="customer-action-card"
+                >
+
+                    <div class="customer-action-icon">
+                        <i class="fa-solid fa-box"></i>
+                    </div>
+
+                    <div>
+                        <h3>Track Order</h3>
+                        <p>
+                            Check the status of an
+                            accessories order.
+                        </p>
+                    </div>
+
+                    <i class="fa-solid fa-arrow-right customer-action-arrow"></i>
+
+                </a>
+
+            </div>
+
+        </section>
+
+
+        <!-- ACTIVITY -->
+
+        <section class="customer-dashboard-section">
+
+            <div class="customer-section-heading">
+                <p>MY ACTIVITY</p>
+                <h2>Repairs & Orders</h2>
+            </div>
+
+
+            <div class="customer-activity-grid">
+
+                <!-- MY REPAIRS -->
+
+                <div class="customer-activity-card">
+
+                    <div class="customer-activity-header">
+
+                        <div>
+
+                            <span class="customer-activity-icon">
+                                <i class="fa-solid fa-mobile-screen-button"></i>
+                            </span>
+
+                            <h3>My Repairs</h3>
+
+                        </div>
+
+                    </div>
+
+
+                    {% if repairs %}
+
+                        <div class="customer-record-list">
+
+                            {% for repair in repairs %}
+
+                                <div class="customer-record">
+
+                                    <div class="customer-record-top">
+
+                                        <strong>
+                                            {{ repair["repair_id"] }}
+                                        </strong>
+
+                                        <span class="customer-record-status">
+                                            {{ repair["status"] }}
+                                        </span>
+
+                                    </div>
+
+                                    <div class="customer-record-details">
+
+                                        <div>
+                                            <span>Device</span>
+                                            <strong>
+                                                {{ repair["brand"] }}
+                                                {{ repair["model"] }}
+                                            </strong>
+                                        </div>
+
+                                        <div>
+                                            <span>Issue</span>
+                                            <strong>
+                                                {{ repair["issue"] }}
+                                            </strong>
+                                        </div>
+
+                                    </div>
+
+                                    <small>
+                                        Submitted:
+                                        {{ repair["created_at"] }}
+                                    </small>
+
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    {% else %}
+
+                        <div class="customer-empty-state">
+
+                            <i class="fa-solid fa-screwdriver-wrench"></i>
+
+                            <h4>No repairs yet</h4>
+
+                            <p>
+                                Repairs booked while you are
+                                signed in will appear here automatically.
+                            </p>
+
+                            <a href="{{ url_for('home') }}#booking">
+                                Book Repair
+                            </a>
+
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+
+                <!-- MY ORDERS -->
+
+                <div class="customer-activity-card">
+
+                    <div class="customer-activity-header">
+
+                        <div>
+
+                            <span class="customer-activity-icon">
+                                <i class="fa-solid fa-box-open"></i>
+                            </span>
+
+                            <h3>My Orders</h3>
+
+                        </div>
+
+                    </div>
+
+
+                    {% if orders %}
+
+                        <div class="customer-record-list">
+
+                            {% for order in orders %}
+
+                                <div class="customer-record">
+
+                                    <div class="customer-record-top">
+
+                                        <strong>
+                                            {{ order["order_id"] }}
+                                        </strong>
+
+                                        <span class="customer-record-status">
+                                            {{ order["status"] }}
+                                        </span>
+
+                                    </div>
+
+                                    <div class="customer-record-details">
+
+                                        <div>
+                                            <span>Product</span>
+                                            <strong>
+                                                {{ order["product_name"] }}
+                                            </strong>
+                                        </div>
+
+                                        <div>
+                                            <span>Quantity</span>
+                                            <strong>
+                                                {{ order["quantity"] }}
+                                            </strong>
+                                        </div>
+
+                                        <div>
+                                            <span>Total</span>
+                                            <strong>
+                                                ₦{{ "{:,}".format(order["total_price"]) }}
+                                            </strong>
+                                        </div>
+
+                                    </div>
+
+                                    <small>
+                                        Ordered:
+                                        {{ order["created_at"] }}
+                                    </small>
+
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    {% else %}
+
+                        <div class="customer-empty-state">
+
+                            <i class="fa-solid fa-bag-shopping"></i>
+
+                            <h4>No orders yet</h4>
+
+                            <p>
+                                Accessory orders placed while you are
+                                signed in will appear here automatically.
+                            </p>
+
+                            <a href="{{ url_for('home') }}#accessories">
+                                Shop Accessories
+                            </a>
+
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- SECURITY -->
+
+        <section class="customer-security-card">
+
+            <div class="customer-security-icon">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+
+            <div>
+
+                <h3>Your account is protected</h3>
+
+                <p>
+                    Your password is securely hashed and your
+                    account is protected using authenticated
+                    Flask sessions.
+                </p>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <footer class="customer-dashboard-footer">
+
+        <p>
+            © 2026 CoreFix Technologies.
+            Professional Device Repair & Technology Services.
+        </p>
+
+    </footer>
+
+    <script>
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker.register(
+                "{{ url_for('static', filename='pwa/service-worker.js') }}"
+            );
+        });
+    }
+</script>
+
+</body>
+</html>

@@ -104,6 +104,8 @@ def create_database():
 
                     repair_id TEXT UNIQUE NOT NULL,
 
+                    user_id INTEGER,
+
                     name TEXT NOT NULL,
 
                     phone TEXT NOT NULL,
@@ -140,6 +142,8 @@ def create_database():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
                     repair_id TEXT UNIQUE NOT NULL,
+
+                    user_id INTEGER,
 
                     name TEXT NOT NULL,
 
@@ -306,6 +310,8 @@ def create_database():
 
                     order_id TEXT UNIQUE NOT NULL,
 
+                    user_id INTEGER,
+
                     product_id INTEGER NOT NULL,
 
                     product_name TEXT NOT NULL,
@@ -342,6 +348,8 @@ def create_database():
 
                     order_id TEXT UNIQUE NOT NULL,
 
+                    user_id INTEGER,
+
                     product_id INTEGER NOT NULL,
 
                     product_name TEXT NOT NULL,
@@ -366,6 +374,118 @@ def create_database():
                 )
                 """
             )
+
+
+        # ==================================
+        # USERS TABLE
+        # ==================================
+
+        if USE_POSTGRES:
+
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS users (
+
+                    id SERIAL PRIMARY KEY,
+
+                    name TEXT NOT NULL,
+
+                    email TEXT UNIQUE NOT NULL,
+
+                    phone TEXT NOT NULL,
+
+                    password_hash TEXT NOT NULL,
+
+                    created_at TIMESTAMP
+                        DEFAULT CURRENT_TIMESTAMP
+
+                )
+                """
+            )
+
+        else:
+
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS users (
+
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                    name TEXT NOT NULL,
+
+                    email TEXT UNIQUE NOT NULL,
+
+                    phone TEXT NOT NULL,
+
+                    password_hash TEXT NOT NULL,
+
+                    created_at TIMESTAMP
+                        DEFAULT CURRENT_TIMESTAMP
+
+                )
+                """
+            )
+
+
+        # ==================================
+        # ACCOUNT LINK MIGRATIONS
+        # ==================================
+
+        if USE_POSTGRES:
+
+            execute_query(
+                connection,
+                """
+                ALTER TABLE repairs
+                ADD COLUMN IF NOT EXISTS user_id INTEGER
+                """
+            )
+
+            execute_query(
+                connection,
+                """
+                ALTER TABLE orders
+                ADD COLUMN IF NOT EXISTS user_id INTEGER
+                """
+            )
+
+        else:
+
+            repair_columns = [
+                row["name"]
+                for row in execute_query(
+                    connection,
+                    "PRAGMA table_info(repairs)"
+                ).fetchall()
+            ]
+
+            if "user_id" not in repair_columns:
+                execute_query(
+                    connection,
+                    """
+                    ALTER TABLE repairs
+                    ADD COLUMN user_id INTEGER
+                    """
+                )
+
+            order_columns = [
+                row["name"]
+                for row in execute_query(
+                    connection,
+                    "PRAGMA table_info(orders)"
+                ).fetchall()
+            ]
+
+            if "user_id" not in order_columns:
+                execute_query(
+                    connection,
+                    """
+                    ALTER TABLE orders
+                    ADD COLUMN user_id INTEGER
+                    """
+                )
 
 
         # ==================================
@@ -408,6 +528,222 @@ def create_database():
             """
         )
 
+        execute_query(
+            connection,
+            """
+            CREATE INDEX IF NOT EXISTS
+            idx_repairs_user_id
+            ON repairs(user_id)
+            """
+        )
+
+        execute_query(
+            connection,
+            """
+            CREATE INDEX IF NOT EXISTS
+            idx_orders_user_id
+            ON orders(user_id)
+            """
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        connection.close()
+
+
+# ==========================================
+# ADD USER
+# ==========================================
+
+def add_user(
+    name,
+    email,
+    phone,
+    password_hash
+):
+
+    connection = get_connection()
+
+    try:
+
+        cursor = execute_query(
+            connection,
+            """
+            INSERT INTO users (
+
+                name,
+                email,
+                phone,
+                password_hash
+
+            )
+
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                name,
+                email,
+                phone,
+                password_hash
+            )
+        )
+
+        connection.commit()
+
+        return cursor.lastrowid if not USE_POSTGRES else None
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        connection.close()
+
+
+# ==========================================
+# GET USER BY EMAIL
+# ==========================================
+
+def get_user_by_email(
+    email
+):
+
+    connection = get_connection()
+
+    try:
+
+        cursor = execute_query(
+            connection,
+            """
+            SELECT *
+            FROM users
+            WHERE LOWER(email) = LOWER(?)
+            """,
+            (
+                email,
+            )
+        )
+
+        return cursor.fetchone()
+
+    finally:
+
+        connection.close()
+
+
+# ==========================================
+# GET USER BY ID
+# ==========================================
+
+def get_user_by_id(
+    user_id
+):
+
+    connection = get_connection()
+
+    try:
+
+        cursor = execute_query(
+            connection,
+            """
+            SELECT *
+            FROM users
+            WHERE id = ?
+            """,
+            (
+                user_id,
+            )
+        )
+
+        return cursor.fetchone()
+
+    finally:
+
+        connection.close()
+
+
+        # ==========================================
+# UPDATE USER PROFILE
+# ==========================================
+
+def update_user(
+    user_id,
+    name,
+    email,
+    phone
+):
+
+    connection = get_connection()
+
+    try:
+
+        execute_query(
+            connection,
+            """
+            UPDATE users
+
+            SET
+                name = ?,
+                email = ?,
+                phone = ?
+
+            WHERE id = ?
+            """,
+            (
+                name,
+                email,
+                phone,
+                user_id
+            )
+        )
+
+        connection.commit()
+
+    except Exception:
+
+        connection.rollback()
+        raise
+
+    finally:
+
+        connection.close()
+
+
+        # ==========================================
+# UPDATE USER PASSWORD
+# ==========================================
+
+def update_user_password(
+    user_id,
+    password_hash
+):
+
+    connection = get_connection()
+
+    try:
+
+        execute_query(
+            connection,
+            """
+            UPDATE users
+            SET password_hash = ?
+            WHERE id = ?
+            """,
+            (
+                password_hash,
+                user_id
+            )
+        )
+
         connection.commit()
 
     except Exception:
@@ -433,7 +769,8 @@ def add_repair(
     model,
     issue,
     description,
-    contact_method
+    contact_method,
+    user_id=None
 ):
 
     connection = get_connection()
@@ -446,6 +783,7 @@ def add_repair(
             INSERT INTO repairs (
 
                 repair_id,
+                user_id,
                 name,
                 phone,
                 device,
@@ -457,10 +795,11 @@ def add_repair(
 
             )
 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 repair_id,
+                user_id,
                 name,
                 phone,
                 device,
@@ -532,6 +871,38 @@ def get_all_repairs():
             FROM repairs
             ORDER BY id DESC
             """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        connection.close()
+
+
+# ==========================================
+# GET REPAIRS BY USER
+# ==========================================
+
+def get_repairs_by_user_id(
+    user_id
+):
+
+    connection = get_connection()
+
+    try:
+
+        cursor = execute_query(
+            connection,
+            """
+            SELECT *
+            FROM repairs
+            WHERE user_id = ?
+            ORDER BY id DESC
+            """,
+            (
+                user_id,
+            )
         )
 
         return cursor.fetchall()
@@ -802,7 +1173,8 @@ def add_order(
     phone,
     quantity,
     unit_price,
-    total_price
+    total_price,
+    user_id=None
 ):
 
     connection = get_connection()
@@ -815,6 +1187,7 @@ def add_order(
             INSERT INTO orders (
 
                 order_id,
+                user_id,
                 product_id,
                 product_name,
                 customer_name,
@@ -825,10 +1198,11 @@ def add_order(
 
             )
 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 order_id,
+                user_id,
                 product_id,
                 product_name,
                 customer_name,
@@ -899,6 +1273,38 @@ def get_all_orders():
             FROM orders
             ORDER BY id DESC
             """
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        connection.close()
+
+
+# ==========================================
+# GET ORDERS BY USER
+# ==========================================
+
+def get_orders_by_user_id(
+    user_id
+):
+
+    connection = get_connection()
+
+    try:
+
+        cursor = execute_query(
+            connection,
+            """
+            SELECT *
+            FROM orders
+            WHERE user_id = ?
+            ORDER BY id DESC
+            """,
+            (
+                user_id,
+            )
         )
 
         return cursor.fetchall()
