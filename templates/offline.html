@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#080b10">
+
+    <title>Offline | CoreFix Technologies</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            font-family: Arial, sans-serif;
+            background:
+                radial-gradient(
+                    circle at top,
+                    rgba(55, 144, 255, 0.14),
+                    transparent 40%
+                ),
+                #080b10;
+            color: #ffffff;
+            text-align: center;
+        }
+
+        .offline-card {
+            width: 100%;
+            max-width: 420px;
+            padding: 40px 26px;
+            border-radius: 22px;
+            border: 1px solid rgba(55, 144, 255, 0.2);
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
+        }
+
+        .offline-icon {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 24px;
+            background: rgba(55, 144, 255, 0.1);
+            font-size: 42px;
+        }
+
+        h1 {
+            margin-bottom: 12px;
+            font-size: 30px;
+        }
+
+        .brand {
+            margin-bottom: 18px;
+            color: #3790ff;
+            font-weight: 700;
+        }
+
+        p {
+            margin-bottom: 28px;
+            color: #aeb7c5;
+            line-height: 1.7;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 12px;
+            background: #3790ff;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="offline-card">
+
+        <div class="offline-icon">
+            📡
+        </div>
+
+        <div class="brand">
+            CoreFix Technologies
+        </div>
+
+        <h1>
+            You're Offline
+        </h1>
+
+        <p>
+            We couldn't connect to CoreFix right now.
+            Check your internet connection and try again.
+        </p>
+
+        <button onclick="window.location.reload()">
+            Try Again
+        </button>
+
+    </div>
+
+</body>
+</html>
