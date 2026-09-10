@@ -91,6 +91,15 @@ if CLOUDINARY_CONFIGURED:
     )
 
 
+    # =====================================================
+# WEB PUSH / VAPID CONFIGURATION
+# =====================================================
+
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY")
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY")
+VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL")
+
+
 # =====================================================
 # FLASK APPLICATION
 # =====================================================
