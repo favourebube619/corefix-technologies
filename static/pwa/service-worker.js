@@ -1,4 +1,4 @@
-const CACHE_NAME = "corefix-v2";
+const CACHE_NAME = "corefix-v3";
 
 const STATIC_ASSETS = [
     "/",
@@ -40,19 +40,33 @@ self.addEventListener("fetch", event => {
         return;
     }
 
-    // Page navigation requests
+    const url = new URL(event.request.url);
+
+    // Do not cache/intercept admin, API or authenticated pages
+    if (
+        url.pathname.startsWith("/api/") ||
+        url.pathname.startsWith("/admin") ||
+        url.pathname.startsWith("/dashboard") ||
+        url.pathname.startsWith("/login") ||
+        url.pathname.startsWith("/logout") ||
+        url.pathname.startsWith("/signup") ||
+        url.pathname.startsWith("/profile/")
+    ) {
+        return;
+    }
+
+    // Normal page navigation
     if (event.request.mode === "navigate") {
+
         event.respondWith(
             fetch(event.request)
-                .catch(() => {
-                    return caches.match("/offline");
-                })
+                .catch(() => caches.match("/offline"))
         );
 
         return;
     }
 
-    // Static files
+    // Static assets
     event.respondWith(
         caches.match(event.request)
             .then(cachedResponse => {
@@ -63,6 +77,13 @@ self.addEventListener("fetch", event => {
 
                 return fetch(event.request)
                     .then(networkResponse => {
+
+                        if (
+                            !networkResponse ||
+                            networkResponse.status !== 200
+                        ) {
+                            return networkResponse;
+                        }
 
                         const responseClone =
                             networkResponse.clone();
@@ -76,6 +97,15 @@ self.addEventListener("fetch", event => {
                             });
 
                         return networkResponse;
+                    })
+                    .catch(() => {
+                        return new Response(
+                            "",
+                            {
+                                status: 503,
+                                statusText: "Offline"
+                            }
+                        );
                     });
             })
     );
