@@ -1256,8 +1256,25 @@
                     await registration.pushManager.getSubscription();
 
                 if (subscription) {
-                    setNotificationButtonState(true);
-                }
+    const response = await fetch("/push/subscribe", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(subscription.toJSON())
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+        setNotificationButtonState(true);
+    } else {
+        console.error(
+            "Could not synchronize push subscription:",
+            result.message
+        );
+    }
+}
             }
         } catch (error) {
             console.error("Notification status check error:", error);
