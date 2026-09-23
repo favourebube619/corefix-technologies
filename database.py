@@ -430,6 +430,45 @@ def create_database():
                 """
             )
 
+        # ==================================
+        # NOTIFICATIONS TABLE
+        # ==================================
+
+        if USE_POSTGRES:
+
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    notification_type TEXT,
+                    is_read BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+        else:
+
+            execute_query(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    notification_type TEXT,
+                    is_read INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+
 
         # ==================================
         # ACCOUNT LINK MIGRATIONS
@@ -731,6 +770,117 @@ def delete_push_subscription(endpoint):
 
     finally:
         connection.close()
+
+
+# =====================================================
+# IN-APP NOTIFICATIONS
+# =====================================================
+
+def add_notification(user_id, title, message, notification_type=None):
+    connection = get_connection()
+
+    try:
+        execute_query(
+            connection,
+            """
+            INSERT INTO notifications (
+                user_id,
+                title,
+                message,
+                notification_type
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                title,
+                message,
+                notification_type,
+            )
+        )
+
+        connection.commit()
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
+
+
+def get_notifications_by_user_id(user_id):
+    connection = get_connection()
+
+    try:
+        cursor = execute_query(
+            connection,
+            """
+            SELECT *
+            FROM notifications
+            WHERE user_id = ?
+            ORDER BY id DESC
+            """,
+            (user_id,)
+        )
+
+        return cursor.fetchall()
+
+    finally:
+        connection.close()
+
+
+def mark_notification_read(notification_id, user_id):
+    connection = get_connection()
+
+    try:
+        execute_query(
+            connection,
+            """
+            UPDATE notifications
+            SET is_read = TRUE
+            WHERE id = ?
+              AND user_id = ?
+            """,
+            (
+                notification_id,
+                user_id,
+            )
+        )
+
+        connection.commit()
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
+
+
+def mark_all_notifications_read(user_id):
+    connection = get_connection()
+
+    try:
+        execute_query(
+            connection,
+            """
+            UPDATE notifications
+            SET is_read = TRUE
+            WHERE user_id = ?
+            """,
+            (user_id,)
+        )
+
+        connection.commit()
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
+
 
 # ==========================================
 # ADD USER

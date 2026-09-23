@@ -40,6 +40,7 @@ from database import (
     save_push_subscription,
     get_push_subscriptions_by_user_id,
     delete_push_subscription,
+    
 
     # Products
     add_product,
@@ -60,7 +61,15 @@ from database import (
     add_user,
     get_user_by_email,
     get_user_by_id,
+    update_user,
     update_user_password,
+
+    # notifications
+    add_notification,
+    get_notifications_by_user_id,
+    mark_notification_read,
+    mark_all_notifications_read,
+
 )
 
 
@@ -617,91 +626,76 @@ def push_test():
 @app.route("/dashboard")
 @customer_required
 def customer_dashboard():
-
-    user = get_user_by_id(
-        session["user_id"]
-    )
+    user = get_user_by_id(session["user_id"])
 
     if not user:
         session.clear()
         return redirect(url_for("login"))
 
-    repairs = get_repairs_by_user_id(
-        user["id"]
-    )
-
-    orders = get_orders_by_user_id(
-        user["id"]
-    )
-
-    notifications = []
-
-
-    for repair in repairs:
-
-        if repair["status"] == "Ready for Collection":
-
-            notifications.append({
-                "type": "repair",
-                "icon": "fa-screwdriver-wrench",
-                "title": "Repair Ready",
-                "message": (
-                    f'{repair["brand"]} '
-                    f'{repair["model"]} '
-                    "is ready for collection."
-                ),
-                "reference": repair["repair_id"],
-            })
-
-
-    for order in orders:
-
-        if order["status"] == "Ready":
-
-            notifications.append({
-                "type": "order",
-                "icon": "fa-box",
-                "title": "Order Ready",
-                "message": (
-                    f'{order["product_name"]} '
-                    "is ready."
-                ),
-                "reference": order["order_id"],
-            })
-
-        elif order["status"] == "Completed":
-
-            notifications.append({
-                "type": "completed",
-                "icon": "fa-circle-check",
-                "title": "Order Completed",
-                "message": (
-                    f'Your order for '
-                    f'{order["product_name"]} '
-                    "has been completed."
-                ),
-                "reference": order["order_id"],
-            })
-
+    repairs = get_repairs_by_user_id(user["id"])
+    orders = get_orders_by_user_id(user["id"])
+    notifications = get_notifications_by_user_id(user["id"])
 
     return render_template(
-    "dashboard.html",
-    user=user,
-    repairs=repairs,
-    orders=orders,
-    notifications=notifications,
-    VAPID_PUBLIC_KEY=VAPID_PUBLIC_KEY,
-)
+        "dashboard.html",
+        user=user,
+        repairs=repairs,
+        orders=orders,
+        notifications=notifications,
+        VAPID_PUBLIC_KEY=VAPID_PUBLIC_KEY,
+    )
 
 
-    # =================================================
-# CUSTOMER NOTIFICATIONS
-# =================================================
+# =====================================================
+# CUSTOMER - MARK NOTIFICATION AS READ
+# =====================================================
 
-notifications = []
+@app.route("/notifications/<int:notification_id>/read", methods=["POST"])
+@customer_required
+def read_notification(notification_id):
+    try:
+        mark_notification_read(
+            notification_id,
+            session["user_id"]
+        )
+
+        return jsonify({
+            "success": True,
+            "message": "Notification marked as read."
+        }), 200
+
+    except Exception as error:
+        print("Mark notification read error:", error)
+        return jsonify({
+            "success": False,
+            "message": "Unable to update notification."
+        }), 500
 
 
+    # =====================================================
+# CUSTOMER - MARK ALL NOTIFICATIONS AS READ
+# =====================================================
 
+@app.route("/notifications/read-all", methods=["POST"])
+@customer_required
+def read_all_notifications():
+    try:
+        mark_all_notifications_read(
+            session["user_id"]
+        )
+
+        return jsonify({
+            "success": True,
+            "message": "All notifications marked as read."
+        }), 200
+
+    except Exception as error:
+        print("Mark all notifications read error:", error)
+
+        return jsonify({
+            "success": False,
+            "message": "Unable to update notifications."
+        }), 500
 
 
 # =====================================================
@@ -1325,159 +1319,106 @@ def admin_repairs():
 def change_status(repair_id):
     try:
         repair_id = repair_id.strip().upper()
-
         repair = get_repair(repair_id)
-
         if not repair:
-            return json_error(
-                "Repair request not found.",
-                404
-            )
+            return json_error("Repair request not found.", 404)
 
         data = request.get_json(silent=True)
-
         if not isinstance(data, dict):
-            return json_error(
-                "No status received.",
-                400
-            )
+            return json_error("No status received.", 400)
 
-        new_status = str(
-            data.get("status", "")
-        ).strip()
-
+        new_status = str(data.get("status", "")).strip()
         allowed_statuses = {
             "Request Received",
             "Device Inspection",
             "Repair In Progress",
             "Ready for Collection",
         }
-
         if new_status not in allowed_statuses:
-            return json_error(
-                "Invalid repair status.",
-                400
-            )
+            return json_error("Invalid repair status.", 400)
 
-        # Update repair status
-        update_repair_status(
-            repair_id,
-            new_status,
-        )
+        old_status = str(repair["status"] or "").strip()
+        if old_status == new_status:
+            return jsonify({
+                "success": True,
+                "message": "Repair is already at this status.",
+                "repairId": repair_id,
+                "status": new_status,
+            }), 200
 
-        # =================================================
-        # SEND PUSH NOTIFICATION TO CUSTOMER
-        # =================================================
-
+        update_repair_status(repair_id, new_status)
         user_id = repair["user_id"]
+        notification_messages = {
+            "Request Received": "Your repair request has been received.",
+            "Device Inspection": "Your device is currently being inspected.",
+            "Repair In Progress": "Repair work on your device is now in progress.",
+            "Ready for Collection": "Good news! Your device is ready for collection.",
+        }
+        device_name = f'{repair["brand"]} {repair["model"]}'.strip()
+        notification_message = notification_messages.get(new_status, new_status)
 
         if user_id:
-
-            subscriptions = (
-                get_push_subscriptions_by_user_id(
-                    user_id
+            try:
+                add_notification(
+                    user_id,
+                    "Repair Update",
+                    f"{device_name}: {notification_message}",
+                    "repair",
                 )
-            )
+            except Exception as notification_error:
+                print("Repair in-app notification error:", notification_error)
 
-            notification_messages = {
-                "Request Received":
-                    "Your repair request has been received.",
-
-                "Device Inspection":
-                    "Your device is currently being inspected.",
-
-                "Repair In Progress":
-                    "Repair work on your device is now in progress.",
-
-                "Ready for Collection":
-                    "Good news! Your device is ready for collection.",
-            }
-
-            device_name = (
-                f'{repair["brand"]} '
-                f'{repair["model"]}'
-            ).strip()
+            try:
+                subscriptions = get_push_subscriptions_by_user_id(user_id)
+            except Exception as subscription_error:
+                print("Repair push subscription lookup error:", subscription_error)
+                subscriptions = []
 
             payload = {
                 "title": "CoreFix Repair Update",
-                "body": (
-                    f"{device_name}: "
-                    f"{notification_messages.get(new_status, new_status)}"
-                ),
-                "icon":
-                    "/static/assets/corefix-icon-192.png",
-                "badge":
-                    "/static/assets/corefix-icon-192.png",
-                "url":
-                    "/dashboard",
+                "body": f"{device_name}: {notification_message}",
+                "icon": "/static/assets/corefix-icon-192.png",
+                "badge": "/static/assets/corefix-icon-192.png",
+                "url": "/dashboard",
             }
 
             for subscription in subscriptions:
-
                 try:
-
                     webpush(
                         subscription_info={
-                            "endpoint":
-                                subscription["endpoint"],
-
+                            "endpoint": subscription["endpoint"],
                             "keys": {
-                                "p256dh":
-                                    subscription["p256dh"],
-
-                                "auth":
-                                    subscription["auth"],
+                                "p256dh": subscription["p256dh"],
+                                "auth": subscription["auth"],
                             },
                         },
-
                         data=json.dumps(payload),
-
-                        vapid_private_key=
-                            VAPID_PRIVATE_KEY_FILE,
-
-                        vapid_claims={
-                            "sub":
-                                VAPID_CLAIMS_EMAIL
-                        },
+                        vapid_private_key=VAPID_PRIVATE_KEY_FILE,
+                        vapid_claims={"sub": VAPID_CLAIMS_EMAIL},
                     )
-
                 except WebPushException as push_error:
-
-                    print(
-                        "Repair push notification error:",
-                        push_error
-                    )
-
-                    # Remove expired subscriptions
+                    print("Repair push notification error:", push_error)
                     if (
                         push_error.response
-                        and
-                        push_error.response.status_code
-                        in [404, 410]
+                        and push_error.response.status_code in [404, 410]
                     ):
-                        delete_push_subscription(
-                            subscription["endpoint"]
-                        )
+                        try:
+                            delete_push_subscription(subscription["endpoint"])
+                        except Exception as cleanup_error:
+                            print("Repair push subscription cleanup error:", cleanup_error)
+                except Exception as push_error:
+                    print("Repair push notification skipped:", push_error)
 
         return jsonify({
             "success": True,
-            "message":
-                "Repair status updated successfully.",
+            "message": "Repair status updated successfully.",
             "repairId": repair_id,
             "status": new_status,
         }), 200
 
     except Exception as error:
-
-        print(
-            "Status update error:",
-            error
-        )
-
-        return json_error(
-            "Unable to update repair status.",
-            500
-        )
+        print("Status update error:", error)
+        return json_error("Unable to update repair status.", 500)
 
 
 # =====================================================
@@ -1960,166 +1901,117 @@ def admin_orders():
 def change_order_status(order_id):
     try:
         order_id = order_id.strip().upper()
-
         order = get_order(order_id)
 
         if not order:
-            return json_error(
-                "Order not found.",
-                404
-            )
+            return json_error("Order not found.", 404)
 
         data = request.get_json(silent=True)
-
         if not isinstance(data, dict):
-            return json_error(
-                "No status received.",
-                400
-            )
+            return json_error("No status received.", 400)
 
-        new_status = str(
-            data.get("status", "")
-        ).strip()
-
+        new_status = str(data.get("status", "")).strip()
         allowed_statuses = {
-            "Pending",
-            "Confirmed",
-            "Ready",
-            "Completed",
-            "Cancelled",
+            "Pending", "Confirmed", "Ready", "Completed", "Cancelled",
         }
 
         if new_status not in allowed_statuses:
-            return json_error(
-                "Invalid order status.",
-                400
-            )
+            return json_error("Invalid order status.", 400)
 
-        # Update order status
-        update_order_status(
-            order_id,
-            new_status,
-        )
+        old_status = str(order["status"] or "").strip()
 
-        # =================================================
-        # SEND PUSH NOTIFICATION TO CUSTOMER
-        # =================================================
+        # Avoid duplicate notifications when the same status is submitted again.
+        if old_status == new_status:
+            return jsonify({
+                "success": True,
+                "message": "Order is already at this status.",
+                "orderId": order_id,
+                "status": new_status,
+            }), 200
+
+        update_order_status(order_id, new_status)
 
         user_id = order["user_id"]
+        notification_messages = {
+            "Pending": "Your order is currently pending.",
+            "Confirmed": "Your order has been confirmed.",
+            "Ready": "Good news! Your order is ready.",
+            "Completed": "Your order has been completed successfully.",
+            "Cancelled": "Your order has been cancelled.",
+        }
+
+        product_name = str(order["product_name"] or "").strip()
+        notification_message = notification_messages.get(new_status, new_status)
 
         if user_id:
-
-            subscriptions = (
-                get_push_subscriptions_by_user_id(
-                    user_id
+            try:
+                add_notification(
+                    user_id,
+                    "Order Update",
+                    f"{product_name}: {notification_message}",
+                    "order",
                 )
-            )
+            except Exception as notification_error:
+                print("Order in-app notification error:", notification_error)
 
-            notification_messages = {
-                "Pending":
-                    "Your order is currently pending.",
-
-                "Confirmed":
-                    "Your order has been confirmed.",
-
-                "Ready":
-                    "Good news! Your order is ready.",
-
-                "Completed":
-                    "Your order has been completed successfully.",
-
-                "Cancelled":
-                    "Your order has been cancelled.",
-            }
-
-            product_name = str(
-                order["product_name"]
-            ).strip()
+            try:
+                subscriptions = get_push_subscriptions_by_user_id(user_id)
+            except Exception as subscription_error:
+                print("Order push subscription lookup error:", subscription_error)
+                subscriptions = []
 
             payload = {
                 "title": "CoreFix Order Update",
-
-                "body": (
-                    f"{product_name}: "
-                    f"{notification_messages.get(new_status, new_status)}"
-                ),
-
-                "icon":
-                    "/static/assets/corefix-icon-192.png",
-
-                "badge":
-                    "/static/assets/corefix-icon-192.png",
-
-                "url":
-                    "/dashboard",
+                "body": f"{product_name}: {notification_message}",
+                "icon": "/static/assets/corefix-icon-192.png",
+                "badge": "/static/assets/corefix-icon-192.png",
+                "url": "/dashboard",
             }
 
             for subscription in subscriptions:
-
                 try:
-
                     webpush(
                         subscription_info={
-                            "endpoint":
-                                subscription["endpoint"],
-
+                            "endpoint": subscription["endpoint"],
                             "keys": {
-                                "p256dh":
-                                    subscription["p256dh"],
-
-                                "auth":
-                                    subscription["auth"],
+                                "p256dh": subscription["p256dh"],
+                                "auth": subscription["auth"],
                             },
                         },
-
                         data=json.dumps(payload),
-
-                        vapid_private_key=
-                            VAPID_PRIVATE_KEY_FILE,
-
-                        vapid_claims={
-                            "sub":
-                                VAPID_CLAIMS_EMAIL
-                        },
+                        vapid_private_key=VAPID_PRIVATE_KEY_FILE,
+                        vapid_claims={"sub": VAPID_CLAIMS_EMAIL},
                     )
 
                 except WebPushException as push_error:
+                    print("Order push notification error:", push_error)
 
-                    print(
-                        "Order push notification error:",
-                        push_error
-                    )
-
-                    # Remove expired subscriptions
                     if (
                         push_error.response
-                        and
-                        push_error.response.status_code
-                        in [404, 410]
+                        and push_error.response.status_code in [404, 410]
                     ):
-                        delete_push_subscription(
-                            subscription["endpoint"]
-                        )
+                        try:
+                            delete_push_subscription(subscription["endpoint"])
+                        except Exception as delete_error:
+                            print(
+                                "Order push subscription cleanup error:",
+                                delete_error,
+                            )
+
+                except Exception as push_error:
+                    # Includes malformed VAPID/base64 configuration errors.
+                    print("Order push notification skipped:", push_error)
 
         return jsonify({
             "success": True,
-            "message":
-                "Order status updated successfully.",
+            "message": "Order status updated successfully.",
             "orderId": order_id,
             "status": new_status,
         }), 200
 
     except Exception as error:
-
-        print(
-            "Order status update error:",
-            error
-        )
-
-        return json_error(
-            "Unable to update order status.",
-            500
-        )
+        print("Order status update error:", error)
+        return json_error("Unable to update order status.", 500)
 
 
 # =====================================================

@@ -139,6 +139,71 @@
                 width: 100%;
             }
         }
+
+        .customer-notification-item.is-unread {
+            border-color: rgba(61, 145, 255, 0.32);
+            background: rgba(47, 134, 255, 0.06);
+        }
+
+        .customer-notification-unread {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 8px;
+            color: #3d91ff;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .customer-notification-unread i {
+            font-size: 7px;
+        }
+
+
+        .customer-notification-item.is-unread {
+            cursor: pointer;
+        }
+
+        .customer-notification-item.is-unread:hover {
+            transform: translateY(-1px);
+        }
+
+        .customer-notification-item {
+            transition:
+                background .2s ease,
+                border-color .2s ease,
+                transform .2s ease;
+        }
+
+
+        .customer-notification-heading-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .customer-mark-all-read-btn {
+            min-height: 38px;
+            padding: 0 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 1px solid rgba(61, 145, 255, 0.28);
+            border-radius: 10px;
+            background: rgba(47, 134, 255, 0.08);
+            color: #7db7ff;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .customer-mark-all-read-btn:disabled {
+            cursor: default;
+            opacity: .55;
+        }
+
     </style>
 
 </head>
@@ -250,9 +315,30 @@
             <h2>Updates for you</h2>
         </div>
 
-        <span class="customer-notification-count">
-            {{ notifications|length }}
-        </span>
+        <div class="customer-notification-heading-actions">
+
+            <button
+                id="markAllNotificationsReadBtn"
+                type="button"
+                class="customer-mark-all-read-btn"
+            >
+                <i class="fa-solid fa-check-double"></i>
+                <span>Mark all as read</span>
+            </button>
+
+            <span
+                id="unreadNotificationCount"
+                class="customer-notification-count"
+            >
+                {{
+                    notifications
+                    | rejectattr("is_read")
+                    | list
+                    | length
+                }}
+            </span>
+
+        </div>
 
     </div>
 
@@ -261,11 +347,25 @@
 
         {% for notification in notifications %}
 
-            <div class="customer-notification-item">
+            <div
+                class="customer-notification-item{% if not notification['is_read'] %} is-unread{% endif %}"
+                data-notification-id="{{ notification['id'] }}"
+                {% if not notification["is_read"] %}
+                role="button"
+                tabindex="0"
+                title="Click to mark as read"
+                {% endif %}
+            >
 
                 <div class="customer-notification-icon">
 
-                    <i class="fa-solid {{ notification['icon'] }}"></i>
+                    {% if notification["notification_type"] == "repair" %}
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                    {% elif notification["notification_type"] == "order" %}
+                        <i class="fa-solid fa-box"></i>
+                    {% else %}
+                        <i class="fa-solid fa-bell"></i>
+                    {% endif %}
 
                 </div>
 
@@ -278,7 +378,7 @@
                         </strong>
 
                         <span>
-                            {{ notification["reference"] }}
+                            {{ notification["created_at"] }}
                         </span>
 
                     </div>
@@ -286,6 +386,13 @@
                     <p>
                         {{ notification["message"] }}
                     </p>
+
+                    {% if not notification["is_read"] %}
+                        <small class="customer-notification-unread">
+                            <i class="fa-solid fa-circle"></i>
+                            New
+                        </small>
+                    {% endif %}
 
                 </div>
 
@@ -806,7 +913,7 @@
 </script>
 
 <script>
-    const VAPID_PUBLIC_KEY = "{{ VAPID_PUBLIC_KEY }}";
+    const VAPID_PUBLIC_KEY = {{ VAPID_PUBLIC_KEY | tojson }};
 
     function urlBase64ToUint8Array(base64String) {
         const padding = "=".repeat((4 - base64String.length % 4) % 4);
@@ -824,6 +931,8 @@
 
     function setNotificationButtonState(enabled) {
         const button = document.getElementById("enableNotificationsBtn");
+
+        updateUnreadNotificationCount();
 
         if (!button) {
             return;
@@ -931,12 +1040,210 @@
         }
     }
 
+
+
+    function updateUnreadNotificationCount() {
+        const countElement = document.getElementById(
+            "unreadNotificationCount"
+        );
+
+        if (!countElement) {
+            return;
+        }
+
+        const unreadCount = document.querySelectorAll(
+            ".customer-notification-item.is-unread"
+        ).length;
+
+        countElement.textContent = unreadCount;
+    }
+
+
+    async function markAllNotificationsAsRead() {
+        const button = document.getElementById("markAllNotificationsReadBtn");
+        const unreadItems = document.querySelectorAll(
+            ".customer-notification-item.is-unread"
+        );
+
+        if (!unreadItems.length) {
+            if (button) button.disabled = true;
+            return;
+        }
+
+        try {
+            if (button) {
+                button.disabled = true;
+                button.innerHTML =
+                    '<i class="fa-solid fa-spinner fa-spin"></i>' +
+                    '<span>Updating...</span>';
+            }
+
+            const response = await fetch("/notifications/read-all", {
+                method: "POST",
+                headers: {
+                    "Accept": "application/json"
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(
+                    result.message || "Could not update notifications."
+                );
+            }
+
+            unreadItems.forEach(item => {
+                item.classList.remove("is-unread");
+                item.removeAttribute("role");
+                item.removeAttribute("tabindex");
+                item.removeAttribute("title");
+
+                const badge = item.querySelector(
+                    ".customer-notification-unread"
+                );
+
+                if (badge) badge.remove();
+            });
+
+            updateUnreadNotificationCount();
+
+            if (button) {
+                button.innerHTML =
+                    '<i class="fa-solid fa-check"></i>' +
+                    '<span>All read</span>';
+            }
+
+        } catch (error) {
+            console.error("Mark all notifications read error:", error);
+
+            if (button) {
+                button.disabled = false;
+                button.innerHTML =
+                    '<i class="fa-solid fa-check-double"></i>' +
+                    '<span>Mark all as read</span>';
+            }
+        }
+    }
+
+
+    async function markNotificationAsRead(item) {
+        if (!item || !item.classList.contains("is-unread")) {
+            return;
+        }
+
+        const notificationId = item.dataset.notificationId;
+
+        if (!notificationId) {
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `/notifications/${notificationId}/read`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(
+                    result.message || "Could not mark notification as read."
+                );
+            }
+
+            item.classList.remove("is-unread");
+            item.removeAttribute("role");
+            item.removeAttribute("tabindex");
+            item.removeAttribute("title");
+
+            const newBadge = item.querySelector(
+                ".customer-notification-unread"
+            );
+
+            if (newBadge) {
+                newBadge.remove();
+            }
+
+            updateUnreadNotificationCount();
+
+            const remainingUnread = document.querySelector(
+                ".customer-notification-item.is-unread"
+            );
+
+            if (!remainingUnread) {
+                const markAllButton = document.getElementById(
+                    "markAllNotificationsReadBtn"
+                );
+
+                if (markAllButton) {
+                    markAllButton.disabled = true;
+                    markAllButton.innerHTML =
+                        '<i class="fa-solid fa-check"></i>' +
+                        '<span>All read</span>';
+                }
+            }
+
+        } catch (error) {
+            console.error(
+                "Mark notification read error:",
+                error
+            );
+        }
+    }
+
     document.addEventListener("DOMContentLoaded", async () => {
         const button = document.getElementById("enableNotificationsBtn");
 
         if (button) {
             button.addEventListener("click", enablePushNotifications);
         }
+
+
+        const markAllButton = document.getElementById(
+            "markAllNotificationsReadBtn"
+        );
+
+        if (markAllButton) {
+            markAllButton.addEventListener(
+                "click",
+                markAllNotificationsAsRead
+            );
+
+            if (
+                !document.querySelector(
+                    ".customer-notification-item.is-unread"
+                )
+            ) {
+                markAllButton.disabled = true;
+                markAllButton.innerHTML =
+                    '<i class="fa-solid fa-check"></i>' +
+                    '<span>All read</span>';
+            }
+        }
+
+        document
+            .querySelectorAll(".customer-notification-item.is-unread")
+            .forEach(item => {
+                item.addEventListener("click", () => {
+                    markNotificationAsRead(item);
+                });
+
+                item.addEventListener("keydown", event => {
+                    if (
+                        event.key === "Enter" ||
+                        event.key === " "
+                    ) {
+                        event.preventDefault();
+                        markNotificationAsRead(item);
+                    }
+                });
+            });
 
         try {
             if (
