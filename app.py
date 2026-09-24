@@ -9,7 +9,6 @@ import cloudinary.uploader
 import hmac
 import os
 import secrets
-import smtplib
 import json
 import resend
 from email.message import EmailMessage
