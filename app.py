@@ -420,6 +420,9 @@ def signup():
             error = "Please enter a valid email address."
         elif not phone:
             error = "Please enter your phone number."
+
+        elif len(re.sub(r"\D", "", phone)) < 10 or len(re.sub(r"\D", "", phone)) > 15:
+            error = "Please enter a valid phone number."
         elif len(password) < 8:
             error = "Password must be at least 8 characters long."
         elif password != confirm_password:
@@ -728,6 +731,10 @@ def edit_profile():
         elif not phone:
 
             error = "Please enter your phone number."
+
+        elif len(re.sub(r"\D", "", phone)) < 10 or len(re.sub(r"\D", "", phone)) > 15:
+
+            error = "Please enter a valid phone number."
 
         else:
 
