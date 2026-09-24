@@ -6,3 +6,4 @@ itsdangerous
 cloudinary
 psycopg2-binary
 pywebpush
+resend

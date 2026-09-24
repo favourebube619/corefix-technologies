@@ -11,6 +11,7 @@ import os
 import secrets
 import smtplib
 import json
+import resend
 from email.message import EmailMessage
 from datetime import datetime, timedelta
 from functools import wraps
@@ -336,30 +337,23 @@ def masked_phone(phone):
 
 def send_reset_email(recipient_email, reset_url):
 
-    mail_server = os.getenv("MAIL_SERVER", "").strip()
-    mail_port = int(os.getenv("MAIL_PORT", "587"))
-    mail_username = os.getenv("MAIL_USERNAME", "").strip()
-    mail_password = os.getenv("MAIL_PASSWORD", "").strip()
-    mail_from = os.getenv("MAIL_FROM", mail_username).strip()
+    resend_api_key = os.getenv(
+        "RESEND_API_KEY",
+        ""
+    ).strip()
 
-    if not all([
-        mail_server,
-        mail_username,
-        mail_password,
-        mail_from
-    ]):
+    if not resend_api_key:
         raise RuntimeError(
-            "Email settings are not fully configured."
+            "RESEND_API_KEY is not configured."
         )
 
-    message = EmailMessage()
+    resend.api_key = resend_api_key
 
-    message["Subject"] = "Reset your CoreFix password"
-    message["From"] = mail_from
-    message["To"] = recipient_email
-
-    message.set_content(
-        f"""
+    params = {
+        "from": "CoreFix Technologies <onboarding@resend.dev>",
+        "to": [recipient_email],
+        "subject": "Reset your CoreFix password",
+        "text": f"""
 Hello,
 
 A password reset was requested for your CoreFix account.
@@ -373,23 +367,10 @@ This link expires in 30 minutes.
 If you did not request this password reset, you can ignore this email.
 
 CoreFix Technologies
-"""
-    )
+""",
+    }
 
-    with smtplib.SMTP(
-    mail_server,
-    mail_port,
-    timeout=10
-) as server:
-
-        server.starttls()
-
-        server.login(
-            mail_username,
-            mail_password
-        )
-
-        server.send_message(message)
+    resend.Emails.send(params)
 
 
 # =====================================================
