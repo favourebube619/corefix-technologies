@@ -960,21 +960,20 @@ def forgot_password():
                 )
 
             except Exception as email_error:
-             import traceback
+                import traceback
 
-        print(
-        "Password reset email error:",
-        repr(email_error),
-        flush=True
-       )
-        traceback.print_exc()
+                print(
+                    "Password reset email error:",
+                    repr(email_error),
+                    flush=True
+                )
+                traceback.print_exc()
 
                 # Local development fallback
                 print("\n" + "=" * 60)
                 print("COREFIX PASSWORD RESET LINK")
                 print(reset_url)
                 print("=" * 60 + "\n")
-
 
     return render_template(
         "forgot_password.html",
