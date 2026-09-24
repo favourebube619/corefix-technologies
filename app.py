@@ -960,11 +960,14 @@ def forgot_password():
                 )
 
             except Exception as email_error:
+             import traceback
 
-                print(
-                    "Password reset email error:",
-                    email_error
-                )
+        print(
+        "Password reset email error:",
+        repr(email_error),
+        flush=True
+       )
+        traceback.print_exc()
 
                 # Local development fallback
                 print("\n" + "=" * 60)
