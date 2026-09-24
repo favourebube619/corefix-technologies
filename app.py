@@ -924,13 +924,6 @@ def forgot_password():
 
     if request.method == "POST":
 
-        email = request.form.get(
-            "email",
-            ""
-        ).strip().lower()
-
-        user = get_user_by_email(email)
-
         # Always show the same response.
         # This prevents people from checking
         # which email addresses are registered.
@@ -939,41 +932,68 @@ def forgot_password():
             "a password reset link has been created."
         )
 
-        if user:
+        try:
+            import traceback
 
-            token = password_reset_serializer.dumps(
-                user["email"],
-                salt="password-reset"
-            )
+            email = request.form.get(
+                "email",
+                ""
+            ).strip().lower()
 
-            reset_url = url_for(
-                "reset_password",
-                token=token,
-                _external=True
-            )
+            print("Password reset request received.", flush=True)
 
-            try:
+            user = get_user_by_email(email)
 
-                send_reset_email(
+            print("Password reset user lookup completed.", flush=True)
+
+            if user:
+
+                token = password_reset_serializer.dumps(
                     user["email"],
-                    reset_url
+                    salt="password-reset"
                 )
 
-            except Exception as email_error:
-                import traceback
-
-                print(
-                    "Password reset email error:",
-                    repr(email_error),
-                    flush=True
+                reset_url = url_for(
+                    "reset_password",
+                    token=token,
+                    _external=True
                 )
-                traceback.print_exc()
 
-                # Local development fallback
-                print("\n" + "=" * 60)
-                print("COREFIX PASSWORD RESET LINK")
-                print(reset_url)
-                print("=" * 60 + "\n")
+                try:
+                    send_reset_email(
+                        user["email"],
+                        reset_url
+                    )
+
+                    print(
+                        "Password reset email sent successfully.",
+                        flush=True
+                    )
+
+                except Exception as email_error:
+
+                    print(
+                        "Password reset email error:",
+                        repr(email_error),
+                        flush=True
+                    )
+                    traceback.print_exc()
+
+                    # Only print the reset link during local development.
+                    if not is_production:
+                        print("\n" + "=" * 60)
+                        print("COREFIX PASSWORD RESET LINK")
+                        print(reset_url)
+                        print("=" * 60 + "\n")
+
+        except Exception as reset_error:
+
+            print(
+                "Forgot password route error:",
+                repr(reset_error),
+                flush=True
+            )
+            traceback.print_exc()
 
     return render_template(
         "forgot_password.html",
