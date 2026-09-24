@@ -145,9 +145,35 @@ else:
 
 app = Flask(__name__)
 
-app.secret_key = os.getenv(
-    "SECRET_KEY",
-    "corefix-local-development-secret-key"
+
+# =====================================================
+# SECURITY / SESSION CONFIGURATION
+# =====================================================
+
+secret_key = os.getenv("SECRET_KEY", "").strip()
+
+if not secret_key:
+    # Local development fallback only.
+    # Production should always have SECRET_KEY configured.
+    secret_key = secrets.token_hex(32)
+    print(
+        "WARNING: SECRET_KEY is not set. "
+        "A temporary development key is being used."
+    )
+
+app.secret_key = secret_key
+
+is_production = (
+    os.getenv("APP_ENV", "development").lower()
+    == "production"
+)
+
+app.config.update(
+    MAX_CONTENT_LENGTH=5 * 1024 * 1024,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=is_production,
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
 )
 
 
@@ -160,34 +186,6 @@ password_reset_serializer = URLSafeTimedSerializer(
 )
 
 PASSWORD_RESET_MAX_AGE = 1800  # 30 minutes
-
-
-# =====================================================
-# SECURITY / SESSION CONFIGURATION
-# =====================================================
-
-secret_key = os.getenv("SECRET_KEY", "").strip()
-
-if not secret_key:
-    # Safe for local development only. Set SECRET_KEY in .env / hosting
-    # environment before deployment so sessions survive restarts.
-    secret_key = secrets.token_hex(32)
-    print(
-        "WARNING: SECRET_KEY is not set. "
-        "A temporary development key is being used."
-    )
-
-app.secret_key = secret_key
-
-is_production = os.getenv("APP_ENV", "development").lower() == "production"
-
-app.config.update(
-    MAX_CONTENT_LENGTH=5 * 1024 * 1024,
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=is_production,
-    PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
-)
 
 
 # =====================================================
