@@ -377,9 +377,10 @@ CoreFix Technologies
     )
 
     with smtplib.SMTP(
-        mail_server,
-        mail_port
-    ) as server:
+    mail_server,
+    mail_port,
+    timeout=10
+) as server:
 
         server.starttls()
 
