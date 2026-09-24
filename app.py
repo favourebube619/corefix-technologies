@@ -1782,6 +1782,11 @@ def create_order():
         if not phone:
             return json_error("Please enter your phone number.", 400)
 
+        phone_digits = re.sub(r"\D", "", phone)
+
+        if len(phone_digits) < 10 or len(phone_digits) > 15:
+            return json_error("Please enter a valid phone number.", 400)
+
         if quantity < 1:
             return json_error("Quantity must be at least 1.", 400)
 
