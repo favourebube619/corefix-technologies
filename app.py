@@ -247,6 +247,20 @@ def customer_required(function):
     return wrapper
 
 
+def valid_email(email):
+    """Basic server-side email format validation."""
+    email = str(email or "").strip()
+
+    return bool(
+        re.fullmatch(
+            r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@"
+            r"(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+"
+            r"[A-Za-z]{2,63}",
+            email,
+        )
+    )
+
+
 def allowed_file(filename):
     return (
         bool(filename)
@@ -416,7 +430,7 @@ def signup():
 
         if not name:
             error = "Please enter your full name."
-        elif not email or "@" not in email:
+        elif not valid_email(email):
             error = "Please enter a valid email address."
         elif not phone:
             error = "Please enter your phone number."
@@ -724,7 +738,7 @@ def edit_profile():
 
             error = "Please enter your full name."
 
-        elif not email or "@" not in email:
+        elif not valid_email(email):
 
             error = "Please enter a valid email address."
 
