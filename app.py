@@ -8,6 +8,7 @@ import cloudinary
 import cloudinary.uploader
 import hmac
 import os
+import re
 import secrets
 import json
 import resend
@@ -1192,6 +1193,15 @@ def create_repair():
         for _, (value, message) in required_fields.items():
             if not value:
                 return json_error(message, 400)
+
+        # Validate phone number
+        phone_digits = re.sub(r"\D", "", phone)
+
+        if len(phone_digits) < 10 or len(phone_digits) > 15:
+            return json_error(
+                "Please enter a valid phone number.",
+                400
+            )
 
         if not contact_method:
             contact_method = "WhatsApp"
