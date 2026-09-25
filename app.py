@@ -952,7 +952,10 @@ def forgot_password():
             if user:
 
                 token = password_reset_serializer.dumps(
-                    user["email"],
+                    {
+                        "email": user["email"],
+                        "password_hash": user["password_hash"],
+                    },
                     salt="password-reset"
                 )
 
@@ -1016,7 +1019,7 @@ def reset_password(token):
 
     try:
 
-        email = password_reset_serializer.loads(
+        reset_data = password_reset_serializer.loads(
             token,
             salt="password-reset",
             max_age=PASSWORD_RESET_MAX_AGE
@@ -1043,14 +1046,30 @@ def reset_password(token):
             ),
         )
 
-    user = get_user_by_email(email)
-
-    if not user:
-
+    if not isinstance(reset_data, dict):
         return render_template(
             "reset_password.html",
             invalid_token=True,
             error="This password reset link is invalid.",
+        )
+
+    email = str(reset_data.get("email", "")).strip().lower()
+    token_password_hash = str(reset_data.get("password_hash", ""))
+
+    user = get_user_by_email(email)
+
+    if (
+        not user
+        or not token_password_hash
+        or not hmac.compare_digest(
+            str(user["password_hash"]),
+            token_password_hash,
+        )
+    ):
+        return render_template(
+            "reset_password.html",
+            invalid_token=True,
+            error="This password reset link is invalid or has already been used.",
         )
 
     error = None
