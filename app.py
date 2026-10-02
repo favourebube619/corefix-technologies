@@ -364,7 +364,7 @@ def send_reset_email(recipient_email, reset_url):
     resend.api_key = resend_api_key
 
     params = {
-        "from": "CoreFix Technologies <onboarding@resend.dev>",
+        "from": "CoreFix Technologies <noreply@corefixng.com>",
         "to": [recipient_email],
         "subject": "Reset your CoreFix password",
         "text": f"""
