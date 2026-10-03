@@ -29,6 +29,7 @@ from flask import (
     request,
     session,
     url_for,
+    Response,
 )
 from database import (
     # Repairs
@@ -2108,6 +2109,32 @@ def file_too_large(error):
     return json_error(
         "Image is too large. Maximum size is 5MB.",
         413,
+    )
+
+
+@app.route("/sitemap.xml")
+def sitemap():
+    pages = [
+        "https://corefixng.com/",
+        "https://corefixng.com/signup",
+        "https://corefixng.com/login",
+    ]
+
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+
+    for page in pages:
+        xml += f"""
+    <url>
+        <loc>{page}</loc>
+    </url>
+"""
+
+    xml += "</urlset>"
+
+    return Response(
+        xml,
+        mimetype="application/xml"
     )
 
 
